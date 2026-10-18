@@ -165,9 +165,9 @@ class UltraTransport(
             }
 
             if (type == PKT_FRAME_DATA) {
-                // Read Frame Header (16 bytes)
-                val fhdrBuf = ByteArray(16)
-                readExact(fhdrBuf, 16)
+                // Read Frame Header (20 bytes: 4 seq + 8 timestamp + 1 key + 3 reserved + 4 nalSize)
+                val fhdrBuf = ByteArray(20)
+                readExact(fhdrBuf, 20)
                 val fBuf = ByteBuffer.wrap(fhdrBuf).order(ByteOrder.LITTLE_ENDIAN)
                 val frameIndex = fBuf.int
                 val timestampUs = fBuf.long
@@ -190,16 +190,16 @@ class UltraTransport(
     }
 
     private fun sendHandshake(width: Int, height: Int, dpi: Int, refreshRate: Int): Boolean {
-        // UDisHeader: 8 bytes, UDisHandshakeReq: 72 bytes = 80 bytes
-        val buf = ByteBuffer.allocate(80).order(ByteOrder.LITTLE_ENDIAN)
+        // UDisHeader: 8 bytes, UDisHandshakeReq: 74 bytes = 82 bytes
+        val buf = ByteBuffer.allocate(82).order(ByteOrder.LITTLE_ENDIAN)
 
         // Header
         buf.putInt(ULTRADISPLAY_MAGIC)
         buf.put(PKT_HANDSHAKE_REQ)
         buf.put(1) // version
-        buf.putShort(72) // payloadLen
+        buf.putShort(74) // payloadLen (74 bytes)
 
-        // Req
+        // Req (74 bytes: 2+2+2+1+1+1+1 + 64)
         buf.putShort(width.toShort())
         buf.putShort(height.toShort())
         buf.putShort(dpi.toShort())
@@ -223,10 +223,12 @@ class UltraTransport(
         if (respHdr.int != ULTRADISPLAY_MAGIC || respHdr.get() != PKT_HANDSHAKE_RESP) {
             return false
         }
+        val respVersion = respHdr.get()
+        val respLen = respHdr.short.toInt() and 0xFFFF
 
-        // Read Handshake Response (14 bytes)
-        val respBuf = ByteArray(14)
-        readExact(respBuf, 14)
+        // Read Handshake Response (respLen bytes, exactly 11 bytes)
+        val respBuf = ByteArray(respLen)
+        readExact(respBuf, respLen)
         val resp = ByteBuffer.wrap(respBuf).order(ByteOrder.LITTLE_ENDIAN)
         val status = resp.get()
         val codec = resp.get()

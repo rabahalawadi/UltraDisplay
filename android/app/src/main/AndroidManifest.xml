@@ -14,7 +14,7 @@
     <application
         android:allowBackup="true"
         android:icon="@android:drawable/ic_menu_slideshow"
-        android:label="UltraDisplay"
+        android:label="@string/app_name"
         android:roundIcon="@android:drawable/ic_menu_slideshow"
         android:supportsRtl="true"
         android:theme="@style/Theme.UltraDisplay.Fullscreen">

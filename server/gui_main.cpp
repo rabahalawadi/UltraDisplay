@@ -67,7 +67,6 @@ static AppState g_app;
 static PrivateFontCollection* g_pPrivateFontCollection = nullptr;
 
 static void InitCairoFont() {
-    // Add Cairo font to current process font table so GDI and GDI+ recognize it
     WCHAR exeDir[MAX_PATH] = {0};
     GetModuleFileNameW(NULL, exeDir, MAX_PATH);
     WCHAR* pSlash = wcsrchr(exeDir, L'\\');
@@ -179,8 +178,7 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         }
     }
 
-    Font fontTitle(pFontFamily, 16, FontStyleBold, UnitPixel);
-    Font fontSubtitle(pFontFamily, 11, FontStyleRegular, UnitPixel);
+    Font fontTitle(pFontFamily, 18, FontStyleBold, UnitPixel);
     Font fontTabActive(pFontFamily, 12, FontStyleBold, UnitPixel);
     Font fontTabInactive(pFontFamily, 12, FontStyleRegular, UnitPixel);
     Font fontSection(pFontFamily, 10, FontStyleBold, UnitPixel);
@@ -215,19 +213,21 @@ static void RenderUI(HWND hWnd, HDC hdc) {
     sfLeft.SetLineAlignment(StringAlignmentCenter);
 
     // ==========================================
-    // 1. TOP HEADER BAR (#181818)
+    // 1. TOP HEADER BAR: Clean CanvasX Title (No Subtitle)
     // ==========================================
-    RectF headerRect(0, 0, (float)width, 68.0f);
+    float headerH = 58.0f;
+    RectF headerRect(0, 0, (float)width, headerH);
     DrawSharpRect(g, &headerBg, &borderSubtle, headerRect);
 
-    g.DrawString(L"UltraDisplay", -1, &fontTitle, PointF(24, 15), &textOffWhite);
-    g.DrawString(L"High-Performance Virtual Tablet Display", -1, &fontSubtitle, PointF(24, 38), &textMuted);
+    // CanvasX App Title (Vertically Centered, No Subtitle)
+    RectF titleRect(24.0f, 0.0f, 250.0f, headerH);
+    g.DrawString(L"CanvasX", -1, &fontTitle, titleRect, &sfLeft, &textOffWhite);
 
     // Status Pill in Top Right (#1E1E1E)
     bool connected = g_app.server.IsClientConnected();
     bool running = g_app.server.IsRunning();
 
-    RectF statusPill(width - 134.0f, 20.0f, 110.0f, 26.0f);
+    RectF statusPill(width - 134.0f, 16.0f, 110.0f, 26.0f);
     SolidBrush pillBg(Color(255, 30, 30, 30));
     DrawSharpRect(g, &pillBg, &borderInner, statusPill);
 
@@ -237,13 +237,15 @@ static void RenderUI(HWND hWnd, HDC hdc) {
     // ==========================================
     // 2. SEGMENTED TAB NAVIGATION BAR: [ Connect ] [ Settings ] [ About Us ]
     // ==========================================
-    RectF tabBarRect(0, 68.0f, (float)width, 54.0f);
+    float tabBarY = 58.0f;
+    float tabBarH = 50.0f;
+    RectF tabBarRect(0, tabBarY, (float)width, tabBarH);
     DrawSharpRect(g, &headerBg, &borderSubtle, tabBarRect);
 
     float tabW = (width - 48.0f - 16.0f) / 3.0f;
-    RectF tab0(24.0f, 78.0f, tabW, 34.0f);
-    RectF tab1(24.0f + tabW + 8.0f, 78.0f, tabW, 34.0f);
-    RectF tab2(24.0f + (tabW + 8.0f) * 2.0f, 78.0f, tabW, 34.0f);
+    RectF tab0(24.0f, tabBarY + 8.0f, tabW, 34.0f);
+    RectF tab1(24.0f + tabW + 8.0f, tabBarY + 8.0f, tabW, 34.0f);
+    RectF tab2(24.0f + (tabW + 8.0f) * 2.0f, tabBarY + 8.0f, tabW, 34.0f);
 
     // Draw Tab 0: Connect
     bool isTab0 = (g_app.currentTab == TAB_CONNECT);
@@ -260,7 +262,7 @@ static void RenderUI(HWND hWnd, HDC hdc) {
     DrawSharpRect(g, isTab2 ? &activeOffWhite : &cardBg, isTab2 ? nullptr : &borderSubtle, tab2);
     g.DrawString(L"About Us", -1, isTab2 ? &fontTabActive : &fontTabInactive, tab2, &sfCenter, isTab2 ? &textDark : &textMuted);
 
-    float contentY = 138.0f;
+    float contentY = 124.0f;
     float contentW = width - 48.0f;
 
     // ==========================================
@@ -322,7 +324,7 @@ static void RenderUI(HWND hWnd, HDC hdc) {
             RectF usbTextRect(52.0f, card1Y + 54.0f, contentW - 52.0f, 36.0f);
             g.DrawString(usbStatusStr.c_str(), -1, &fontBold, usbTextRect, &sfLeft, &textOffWhite);
 
-            g.DrawString(L"In UltraDisplay on Android, tap 'USB Cable Mode' to connect with 0ms latency.", -1, &fontSmall, PointF(40, card1Y + 102), &textSection);
+            g.DrawString(L"In CanvasX on Android, tap 'USB Cable Mode' to connect with 0ms latency.", -1, &fontSmall, PointF(40, card1Y + 102), &textSection);
         }
 
         // Live Session Telemetry Card (#1C1C1C)
@@ -456,12 +458,12 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         RectF aCard1(24.0f, contentY, contentW, 206.0f);
         DrawSharpRect(g, &cardBg, &borderSubtle, aCard1);
 
-        g.DrawString(L"UltraDisplay v2.0", -1, &fontTitle, PointF(40, contentY + 18), &textOffWhite);
+        g.DrawString(L"CanvasX v2.0", -1, &fontTitle, PointF(40, contentY + 18), &textOffWhite);
         g.DrawString(L"Created by Rabah Alawadi", -1, &fontBold, PointF(40, contentY + 44), &textMuted);
 
         RectF descRect(40.0f, contentY + 70.0f, contentW - 32.0f, 64.0f);
         g.DrawString(
-            L"UltraDisplay turns your Android phone or tablet into a high-precision, zero-latency graphics drawing display for Windows.\n\nOptimized for Krita, Photoshop, Clip Studio, Illustrator, and OneNote with native Windows Ink pressure and tilt.",
+            L"CanvasX turns your Android phone or tablet into a high-precision, zero-latency graphics drawing display for Windows.\n\nOptimized for Krita, Photoshop, Clip Studio, Illustrator, and OneNote with native Windows Ink pressure and tilt.",
             -1, &fontBody, descRect, &sfLeft, &textMuted
         );
 
@@ -510,7 +512,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
         g_app.nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
         g_app.nid.uCallbackMessage = WM_TRAYICON;
         g_app.nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-        strcpy(g_app.nid.szTip, "UltraDisplay Server (Running)");
+        strcpy(g_app.nid.szTip, "CanvasX Server (Running)");
         Shell_NotifyIconA(NIM_ADD, &g_app.nid);
 
         // Start Server Engine
@@ -551,8 +553,8 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
         int width = cr.right - cr.left;
         float contentW = width - 48.0f;
 
-        // 1. Tab Bar Navigation (Y: 78 to 112)
-        if (y >= 78 && y <= 112) {
+        // 1. Tab Bar Navigation (Y: 66 to 100)
+        if (y >= 66 && y <= 100) {
             float tabW = (width - 48.0f - 16.0f) / 3.0f;
             if (x >= 24 && x <= 24 + tabW) {
                 g_app.currentTab = TAB_CONNECT;
@@ -571,7 +573,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 
         // 2. Tab 0: CONNECT clicks
         if (g_app.currentTab == TAB_CONNECT) {
-            float contentY = 138.0f;
+            float contentY = 124.0f;
 
             // Mode Selector: Wi-Fi Mode vs USB Cable Mode (Y: contentY + 20 to contentY + 58)
             float modeW = (contentW - 8.0f) / 2.0f;
@@ -593,7 +595,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
             if (g_app.currentMode == MODE_WIFI && y >= card1Y + 54 && y <= card1Y + 90) {
                 if (x >= width - 138 && x <= width - 40) {
                     CopyToClipboard(hWnd, g_app.primaryIp);
-                    MessageBoxA(hWnd, ("Copied " + g_app.primaryIp + " to clipboard!").c_str(), "UltraDisplay", MB_OK | MB_ICONINFORMATION);
+                    MessageBoxA(hWnd, ("Copied " + g_app.primaryIp + " to clipboard!").c_str(), "CanvasX", MB_OK | MB_ICONINFORMATION);
                     return 0;
                 }
             }
@@ -633,7 +635,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
         }
         // 3. Tab 1: SETTINGS clicks
         else if (g_app.currentTab == TAB_SETTINGS) {
-            float contentY = 138.0f;
+            float contentY = 124.0f;
             float sCard1Y = contentY + 20.0f;
 
             // Target FPS (120 vs 60)
@@ -670,7 +672,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
         }
         // 4. Tab 2: ABOUT US clicks
         else if (g_app.currentTab == TAB_ABOUT) {
-            float contentY = 138.0f;
+            float contentY = 124.0f;
             // GitHub Button (Y: contentY + 148 to contentY + 186)
             if (y >= contentY + 148 && y <= contentY + 186) {
                 if (x >= 40 && x <= 40 + contentW - 32.0f) {
@@ -687,7 +689,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
             POINT pt;
             GetCursorPos(&pt);
             HMENU hMenu = CreatePopupMenu();
-            AppendMenuA(hMenu, MF_STRING, ID_TRAY_SHOW, "Open UltraDisplay Dashboard");
+            AppendMenuA(hMenu, MF_STRING, ID_TRAY_SHOW, "Open CanvasX Dashboard");
             AppendMenuA(hMenu, MF_STRING, ID_TRAY_RESTART, "Restart Server");
             AppendMenuA(hMenu, MF_SEPARATOR, 0, NULL);
             AppendMenuA(hMenu, MF_STRING, ID_TRAY_EXIT, "Exit Server");
@@ -744,7 +746,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     icex.dwICC = ICC_STANDARD_CLASSES | ICC_WIN95_CLASSES;
     InitCommonControlsEx(&icex);
 
-    const char CLASS_NAME[] = "UltraDisplayServerGUI";
+    const char CLASS_NAME[] = "CanvasXServerGUI";
     WNDCLASSA wc = {0};
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
@@ -756,7 +758,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     RegisterClassA(&wc);
 
     int winWidth = 580;
-    int winHeight = 650;
+    int winHeight = 630;
     int screenW = GetSystemMetrics(SM_CXSCREEN);
     int screenH = GetSystemMetrics(SM_CYSCREEN);
     int posX = (screenW - winWidth) / 2;
@@ -765,7 +767,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hWnd = CreateWindowExA(
         0,
         CLASS_NAME,
-        "UltraDisplay - Host Server & Control Dashboard",
+        "CanvasX",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         posX, posY, winWidth, winHeight,
         NULL, NULL, hInstance, NULL

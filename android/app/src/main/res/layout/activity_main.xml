@@ -43,29 +43,15 @@
             android:gravity="center_vertical"
             android:background="#181818">
 
-            <LinearLayout
+            <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="UltraDisplay"
-                    android:textColor="#E0E0E0"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:fontFamily="@font/cairo" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="High-Performance Virtual Tablet Display"
-                    android:textColor="#888888"
-                    android:textSize="11sp"
-                    android:fontFamily="@font/cairo" />
-            </LinearLayout>
+                android:text="CanvasX"
+                android:textColor="#E0E0E0"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/cairo" />
 
             <TextView
                 android:id="@+id/headerPill"
@@ -393,7 +379,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="UltraDisplay v2.0"
+                            android:text="CanvasX v2.0"
                             android:textColor="#E0E0E0"
                             android:textSize="20sp"
                             android:textStyle="bold"
@@ -412,7 +398,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="UltraDisplay turns your Android phone or tablet into a high-precision, zero-latency graphics drawing display for Windows.\n\nOptimized for Krita, Photoshop, Clip Studio, Illustrator, and OneNote with native Windows Ink pressure and tilt."
+                            android:text="CanvasX turns your Android phone or tablet into a high-precision, zero-latency graphics drawing display for Windows.\n\nOptimized for Krita, Photoshop, Clip Studio, Illustrator, and OneNote with native Windows Ink pressure and tilt."
                             android:textColor="#A0A0A0"
                             android:textSize="13sp"
                             android:fontFamily="@font/cairo"

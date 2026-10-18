@@ -3,6 +3,10 @@
 #include <codecapi.h>
 #include <wmcodecdsp.h>
 
+#ifndef MF_LOW_LATENCY
+static const GUID MF_LOW_LATENCY = { 0x9c27891a, 0xed89, 0x405f, { 0x81, 0x24, 0x56, 0x98, 0xba, 0x05, 0x76, 0x97 } };
+#endif
+
 #pragma comment(lib, "mfplat.lib")
 #pragma comment(lib, "mfuuid.lib")
 #pragma comment(lib, "mf.lib")

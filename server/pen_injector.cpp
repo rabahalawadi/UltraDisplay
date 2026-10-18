@@ -1,3 +1,6 @@
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0602
+#endif
 #include "pen_injector.h"
 #include <stdio.h>
 #include <math.h>
@@ -55,7 +58,7 @@ bool PenInjector::Initialize(int targetMonitorLeft, int targetMonitorTop, int ta
         if (m_hSyntheticPen) {
             printf("[PenInjector] Windows Ink Synthetic Pen Device initialized (Handle: %p)\n", m_hSyntheticPen);
         } else {
-            printf("[PenInjector] CreateSyntheticPointerDevice: 0x%lu (Fallback SendInput active)\n", GetLastError());
+            printf("[PenInjector] CreateSyntheticPointerDevice: 0x%lu (Fallback SendInput/mouse_event active)\n", GetLastError());
         }
     }
 
@@ -112,13 +115,22 @@ void PenInjector::SendMouseAbsolute(int x, int y, DWORD mouseFlags) {
     int spanW = (vWidth > 1) ? (vWidth - 1) : 1;
     int spanH = (vHeight > 1) ? (vHeight - 1) : 1;
 
+    DWORD dx = (DWORD)(((double)(x - vLeft) * 65535.0) / spanW);
+    DWORD dy = (DWORD)(((double)(y - vTop) * 65535.0) / spanH);
+
+    // 1. Direct hardware cursor placement
+    SetCursorPos(x, y);
+
+    // 2. High-precision SendInput absolute movement
     INPUT input = {0};
     input.type = INPUT_MOUSE;
-    input.mi.dx = (LONG)(((double)(x - vLeft) * 65535.0) / spanW);
-    input.mi.dy = (LONG)(((double)(y - vTop) * 65535.0) / spanH);
+    input.mi.dx = dx;
+    input.mi.dy = dy;
     input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK | mouseFlags;
-
     SendInput(1, &input, sizeof(INPUT));
+
+    // 3. Low-level mouse_event fallback (ensures cross-session/UIPI desktop events are delivered)
+    mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK | mouseFlags, dx, dy, 0, 0);
 }
 
 bool PenInjector::InjectSPen(const UDisSPenEvent& ev) {
@@ -128,11 +140,7 @@ bool PenInjector::InjectSPen(const UDisSPenEvent& ev) {
     bool isInRange = (ev.flags & SPEN_FLAG_INRANGE) != 0;
     bool barrel = (ev.flags & SPEN_FLAG_BARREL) != 0;
 
-    // Immediately update the physical system cursor position
-    SetCursorPos(pt.x, pt.y);
-
-    // 1. In Hover state (!isDown): Always post MOUSEEVENTF_MOVE so Windows desktop,
-    // hit-testing, and Krita's brush circle track the mouse position seamlessly.
+    // 1. In Hover state (!isDown): Always move cursor without clicking
     if (!isDown) {
         if (m_wasDown) {
             // Lifted pen tip off tablet: ensure mouse button release is posted
@@ -173,8 +181,11 @@ bool PenInjector::InjectSPen(const UDisSPenEvent& ev) {
         } else {
             if (m_wasDown) {
                 flags |= POINTER_FLAG_UP;
+            } else if (!m_wasInRange) {
+                // First enter into range: POINTER_FLAG_INRANGE only!
             } else {
-                flags |= POINTER_FLAG_UPDATE; // Windows Ink hover update
+                // Gliding in hover while already in range
+                flags |= POINTER_FLAG_UPDATE;
             }
         }
 
@@ -191,8 +202,6 @@ bool PenInjector::InjectSPen(const UDisSPenEvent& ev) {
         pti.penInfo.penMask = PEN_MASK_PRESSURE | PEN_MASK_TILT_X | PEN_MASK_TILT_Y;
 
         // Windows Ink POINTER_PEN_INFO pressure scale is strictly 0..1024!
-        // We calibrate incoming 0..4095 pressure with an artistic gamma curve (1.4)
-        // so light strokes are delicate and don't immediately spike to maximum thickness.
         if (isDown && ev.pressure > 0) {
             float normP = (float)ev.pressure / 4095.0f;
             if (normP < 0.0f) normP = 0.0f;
@@ -247,7 +256,6 @@ bool PenInjector::InjectTouch(const UDisTouchEvent& ev) {
     if (!m_touchInitialized || !s_InjectTouchInput || ev.count == 0) {
         if (ev.count > 0) {
             POINT pt = MapCoordinates(ev.contacts[0].normX, ev.contacts[0].normY);
-            SetCursorPos(pt.x, pt.y);
             DWORD mouseFlags = MOUSEEVENTF_MOVE;
             if (ev.contacts[0].state == 0) mouseFlags |= MOUSEEVENTF_LEFTDOWN;
             else if (ev.contacts[0].state == 2) mouseFlags |= MOUSEEVENTF_LEFTUP;

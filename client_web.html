@@ -143,6 +143,7 @@
     <div id="toolbar">
         <button class="btn-tool" id="btnCurve">Curve: Medium</button>
         <button class="btn-tool" id="btnScale">Mode: Fill Screen</button>
+        <button class="btn-tool" id="btnLock">Lock Cursor</button>
         <button class="btn-tool" id="btnFullscreen">Fullscreen</button>
     </div>
 
@@ -159,6 +160,7 @@
         const hud = document.getElementById('hud');
         const btnScale = document.getElementById('btnScale');
         const btnCurve = document.getElementById('btnCurve');
+        const btnLock = document.getElementById('btnLock');
         const btnFullscreen = document.getElementById('btnFullscreen');
 
         let ws = null;
@@ -167,6 +169,8 @@
         let curveMode = 'medium'; // 'soft', 'medium', 'firm'
         let streamWidth = 1920;
         let streamHeight = 1080;
+        let lockedX = 0.5;
+        let lockedY = 0.5;
 
         function updateCanvasDimensions() {
             const dpr = window.devicePixelRatio || 1;
@@ -190,6 +194,16 @@
         });
 
         btnFullscreen.addEventListener('click', requestFullscreenSafe);
+
+        btnLock.addEventListener('click', () => {
+            if (document.pointerLockElement === canvas) {
+                document.exitPointerLock();
+                btnLock.textContent = 'Lock Cursor';
+            } else {
+                canvas.requestPointerLock();
+                btnLock.textContent = 'Unlock Cursor';
+            }
+        });
 
         btnScale.addEventListener('click', () => {
             if (scaleMode === 'fill') {
@@ -224,8 +238,6 @@
         }
 
         window.addEventListener('contextmenu', (e) => e.preventDefault(), { passive: false });
-        window.addEventListener('touchstart', (e) => { if (isConnected) e.preventDefault(); }, { passive: false });
-        window.addEventListener('touchmove', (e) => { if (isConnected) e.preventDefault(); }, { passive: false });
 
         function connect(host) {
             btnConnect.textContent = 'Connecting...';
@@ -343,21 +355,26 @@
 
         // PointerEvents & MouseEvents: Captures both Stylus and Phone Mouse Cursor
         function handlePointer(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
             if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
 
             const rect = canvas.getBoundingClientRect();
             if (rect.width <= 0 || rect.height <= 0) return;
 
-            // e.clientX / e.clientY captures the phone mouse cursor seamlessly
             let normX = 0;
             let normY = 0;
 
-            if (scaleMode === 'fill') {
+            if (document.pointerLockElement === canvas) {
+                const spanW = rect.width > 0 ? rect.width : 1920;
+                const spanH = rect.height > 0 ? rect.height : 1080;
+                lockedX += (e.movementX || 0) / spanW;
+                lockedY += (e.movementY || 0) / spanH;
+                normX = Math.max(0, Math.min(1, lockedX));
+                normY = Math.max(0, Math.min(1, lockedY));
+            } else if (scaleMode === 'fill') {
                 normX = (e.clientX - rect.left) / rect.width;
                 normY = (e.clientY - rect.top) / rect.height;
+                lockedX = normX;
+                lockedY = normY;
             } else {
                 const canvasAspect = rect.width / rect.height;
                 const frameAspect = streamWidth / streamHeight;
@@ -376,6 +393,8 @@
 
                 normX = (e.clientX - rect.left - dx) / dw;
                 normY = (e.clientY - rect.top - dy) / dh;
+                lockedX = normX;
+                lockedY = normY;
             }
 
             normX = Math.max(0, Math.min(1, normX));

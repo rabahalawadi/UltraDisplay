@@ -1,8 +1,8 @@
 package com.ultradisplay.client.spen
 
-import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
+import android.widget.TextView
 import com.ultradisplay.client.transport.UltraTransport
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -11,7 +11,8 @@ import kotlin.math.sin
 
 class UltraSPenManager(
     private val transport: UltraTransport,
-    private val surfaceView: View
+    private val surfaceView: View,
+    private val hud: TextView? = null
 ) : View.OnTouchListener, View.OnHoverListener, View.OnGenericMotionListener {
 
     private var wasTouching = false
@@ -38,39 +39,61 @@ class UltraSPenManager(
     }
 
     override fun onHover(v: View, event: MotionEvent): Boolean {
-        val toolType = event.getToolType(0)
-        // Accept S-Pen, Stylus, Eraser, and OTG Drawing Tablets (which Android classifies as Mouse or Unknown)
-        if (toolType != MotionEvent.TOOL_TYPE_FINGER) {
-            handleSPenHover(event)
-            return true
-        }
-        return false
+        return handleGenericMotion(event)
     }
 
     override fun onGenericMotion(v: View, event: MotionEvent): Boolean {
-        val action = event.actionMasked
-        if (action == MotionEvent.ACTION_HOVER_MOVE ||
-            action == MotionEvent.ACTION_HOVER_ENTER ||
-            action == MotionEvent.ACTION_HOVER_EXIT) {
-            val toolType = event.getToolType(0)
-            if (toolType != MotionEvent.TOOL_TYPE_FINGER) {
-                handleSPenHover(event)
-                return true
-            }
-        }
-        return false
+        return handleGenericMotion(event)
     }
 
     override fun onTouch(v: View, event: MotionEvent): Boolean {
-        val toolType = event.getToolType(0)
-        // If not a capacitive finger touch, treat as precision stylus / drawing tablet
-        if (toolType != MotionEvent.TOOL_TYPE_FINGER) {
+        return handleTouchEvent(event)
+    }
+
+    /**
+     * Intercepts all hover and generic mouse movements across the screen.
+     * Works with S-Pen hover and OTG drawing tablets (which Android classifies as Mouse).
+     */
+    fun handleGenericMotion(event: MotionEvent): Boolean {
+        val action = event.actionMasked
+
+        // Check if this is contact (button pressed or pressure detected)
+        val isButtonDown = event.buttonState != 0
+        val hasPressure = event.pressure > 0.015f
+
+        if (isButtonDown || hasPressure) {
             handleSPenTouch(event)
             return true
-        } else {
+        }
+
+        // Gliding in the air without contact = Pure Hover
+        handleSPenHover(event)
+        return true
+    }
+
+    /**
+     * Intercepts physical screen touches and pen presses.
+     */
+    fun handleTouchEvent(event: MotionEvent): Boolean {
+        val toolType = event.getToolType(0)
+
+        // If multiple fingers on screen: Multitouch pan/zoom
+        if (toolType == MotionEvent.TOOL_TYPE_FINGER && event.pointerCount > 1) {
             handleMultitouch(event)
             return true
         }
+
+        val isRelease = (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL)
+        val isContact = (event.buttonState != 0 || event.pressure > 0.015f)
+
+        if (!isRelease && !isContact && event.actionMasked != MotionEvent.ACTION_DOWN) {
+            // Mouse moved without clicking = Hover
+            handleSPenHover(event)
+            return true
+        }
+
+        handleSPenTouch(event)
+        return true
     }
 
     private fun handleSPenHover(event: MotionEvent) {
@@ -83,7 +106,6 @@ class UltraSPenManager(
         val tiltRad = event.getAxisValue(MotionEvent.AXIS_TILT)
         val orientRad = event.getAxisValue(MotionEvent.AXIS_ORIENTATION)
 
-        // Convert spherical tilt/orientation to Cartesian tiltX and tiltY (-90..+90 degrees)
         val tiltDeg = Math.toDegrees(tiltRad.toDouble())
         val tiltX = (tiltDeg * sin(orientRad.toDouble())).toInt().coerceIn(-90, 90).toByte()
         val tiltY = (-tiltDeg * cos(orientRad.toDouble())).toInt().coerceIn(-90, 90).toByte()
@@ -95,19 +117,19 @@ class UltraSPenManager(
                        event.isButtonPressed(MotionEvent.BUTTON_STYLUS_SECONDARY) ||
                        event.isButtonPressed(MotionEvent.BUTTON_TERTIARY)
 
-        var flags: Short = SPEN_FLAG_INRANGE
+        var flags: Short = (SPEN_FLAG_INRANGE.toInt() or SPEN_FLAG_MOVE.toInt()).toShort()
         if (barrel) flags = (flags.toInt() or SPEN_FLAG_BARREL.toInt()).toShort()
         if (isEraser) flags = (flags.toInt() or SPEN_FLAG_ERASER.toInt()).toShort()
 
-        when (event.actionMasked) {
-            MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
-                flags = (flags.toInt() or SPEN_FLAG_MOVE.toInt()).toShort()
-                wasHovering = true
-            }
-            MotionEvent.ACTION_HOVER_EXIT -> {
-                flags = SPEN_FLAG_NONE
-                wasHovering = false
-            }
+        if (event.actionMasked == MotionEvent.ACTION_HOVER_EXIT) {
+            flags = SPEN_FLAG_NONE
+            wasHovering = false
+        } else {
+            wasHovering = true
+        }
+
+        hud?.post {
+            hud.text = "Pen: HOVER (${(normX * 100).toInt()}%, ${(normY * 100).toInt()}%)"
         }
 
         // Pressure is strictly 0 when gliding in air during hover
@@ -137,7 +159,7 @@ class UltraSPenManager(
             val hx = (event.getHistoricalX(0, h) / width).coerceIn(0f, 1f)
             val hy = (event.getHistoricalY(0, h) / height).coerceIn(0f, 1f)
             val rawHp = event.getHistoricalPressure(0, h)
-            val hp = if (rawHp > 0f) {
+            val hp = if (rawHp > 0.015f) {
                 (rawHp * 4095f).toInt().coerceIn(1, 4095).toShort()
             } else {
                 2048.toShort()
@@ -154,15 +176,22 @@ class UltraSPenManager(
         val normX = (event.x / width).coerceIn(0f, 1f)
         val normY = (event.y / height).coerceIn(0f, 1f)
         val rawP = event.pressure
-        val pressure = if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+
+        val isRelease = (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL)
+        val pressure = if (isRelease) {
             0.toShort()
-        } else if (rawP > 0f) {
+        } else if (rawP > 0.015f) {
             (rawP * 4095f).toInt().coerceIn(1, 4095).toShort()
         } else {
-            2048.toShort() // Fallback if binary button press
+            2048.toShort()
         }
 
-        var flags: Short = (SPEN_FLAG_INRANGE.toInt() or SPEN_FLAG_INCONTACT.toInt()).toShort()
+        var flags: Short = if (isRelease) {
+            (SPEN_FLAG_INRANGE.toInt() or SPEN_FLAG_UP.toInt()).toShort()
+        } else {
+            (SPEN_FLAG_INRANGE.toInt() or SPEN_FLAG_INCONTACT.toInt()).toShort()
+        }
+
         if (barrel) flags = (flags.toInt() or SPEN_FLAG_BARREL.toInt()).toShort()
         if (isEraser) flags = (flags.toInt() or SPEN_FLAG_ERASER.toInt()).toShort()
 
@@ -175,8 +204,15 @@ class UltraSPenManager(
                 flags = (flags.toInt() or SPEN_FLAG_MOVE.toInt()).toShort()
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                flags = (flags.toInt() or SPEN_FLAG_UP.toInt()).toShort()
                 wasTouching = false
+            }
+        }
+
+        hud?.post {
+            if (isRelease) {
+                hud.text = "Pen: HOVER (${(normX * 100).toInt()}%, ${(normY * 100).toInt()}%)"
+            } else {
+                hud.text = "Pen: DRAW (${(normX * 100).toInt()}%, ${(normY * 100).toInt()}%) P:${((pressure.toFloat() / 4095f) * 100).toInt()}%"
             }
         }
 

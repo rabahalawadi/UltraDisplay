@@ -25,6 +25,18 @@ enum ClientProtocol {
     PROTO_SUPERDISPLAY
 };
 
+static void LogToFile(const char* fmt, ...) {
+    static FILE* s_log = fopen("server.log", "a");
+    if (!s_log) s_log = fopen("server.log", "w");
+    if (s_log) {
+        va_list args;
+        va_start(args, fmt);
+        vfprintf(s_log, fmt, args);
+        va_end(args);
+        fflush(s_log);
+    }
+}
+
 static std::string ComputeWebSocketAccept(const std::string& key) {
     std::string fullKey = key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
     HCRYPTPROV hProv = 0;
@@ -534,6 +546,9 @@ private:
                                    (pSpen->flags & SPEN_FLAG_INCONTACT) ? " [TOUCH]" : " [HOVER]",
                                    (pSpen->flags & SPEN_FLAG_BARREL) ? " [BARREL]" : "");
                         }
+                        LogToFile("[S-Pen WS] norm(%.3f, %.3f) p=%u flags=0x%04X%s\n",
+                                  pSpen->normX, pSpen->normY, pSpen->pressure, pSpen->flags,
+                                  (pSpen->flags & SPEN_FLAG_INCONTACT) ? " [TOUCH]" : " [HOVER]");
                         m_injector.InjectSPen(*pSpen);
                     } else if (pHdr->type == PKT_INPUT_TOUCH && payload.size() >= sizeof(UDisHeader) + sizeof(UDisTouchEvent)) {
                         UDisTouchEvent* pTouch = (UDisTouchEvent*)(payload.data() + sizeof(UDisHeader));
@@ -559,6 +574,9 @@ private:
                     printf("[S-Pen Native] norm(%.3f, %.3f) pressure:%4u flags:0x%04X\n",
                            spen.normX, spen.normY, spen.pressure, spen.flags);
                 }
+                LogToFile("[S-Pen Native] norm(%.3f, %.3f) p=%u flags=0x%04X%s\n",
+                          spen.normX, spen.normY, spen.pressure, spen.flags,
+                          (spen.flags & SPEN_FLAG_INCONTACT) ? " [TOUCH]" : " [HOVER]");
                 m_injector.InjectSPen(spen);
             } else if (hdr.type == PKT_INPUT_TOUCH) {
                 UDisTouchEvent touch;

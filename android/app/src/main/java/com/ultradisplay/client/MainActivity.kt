@@ -7,6 +7,7 @@ import android.hardware.usb.UsbManager
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
+import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
@@ -55,6 +56,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         statsOverlay = findViewById(R.id.statsOverlay)
 
         surfaceView.holder.addCallback(this)
+        surfaceView.isFocusable = true
+        surfaceView.isFocusableInTouchMode = true
 
         val metrics = DisplayMetrics()
         windowManager.defaultDisplay.getRealMetrics(metrics)
@@ -116,15 +119,17 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                     isConnected = true
                     overlayLayout.visibility = View.GONE
                     statsOverlay.visibility = View.VISIBLE
-                    statsOverlay.text = "S-Pen: Active | ${streamWidth}x${streamHeight} @ ${fps}fps"
+                    statsOverlay.text = "Pen: Ready | ${streamWidth}x${streamHeight} @ ${fps}fps"
                     connectButton.text = "Disconnect"
 
                     // Start hardware video decoder
                     decoder = UltraVideoDecoder(surfaceView.holder.surface, streamWidth, streamHeight)
                     decoder?.start()
 
-                    // Start S-Pen Manager
-                    spenManager = UltraSPenManager(transport!!, surfaceView)
+                    // Start S-Pen Manager with on-screen HUD
+                    spenManager = UltraSPenManager(transport!!, surfaceView, statsOverlay)
+
+                    surfaceView.requestFocus()
                 }
             },
             onDisconnected = { reason ->
@@ -133,6 +138,31 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 }
             }
         )
+    }
+
+    /**
+     * Intercepts all hover and generic mouse movements across the entire Activity window.
+     * Guarantees external OTG tablets are captured without being dropped by child view focus.
+     */
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (isConnected && spenManager != null) {
+            if (spenManager?.handleGenericMotion(event) == true) {
+                return true
+            }
+        }
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    /**
+     * Intercepts all touch and pen clicks across the Activity window.
+     */
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (isConnected && spenManager != null) {
+            if (spenManager?.handleTouchEvent(event) == true) {
+                return true
+            }
+        }
+        return super.dispatchTouchEvent(event)
     }
 
     private fun onDisconnectedUI(reason: String) {

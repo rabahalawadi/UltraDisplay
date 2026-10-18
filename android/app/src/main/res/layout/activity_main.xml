@@ -12,14 +12,22 @@
         android:focusable="true"
         android:focusableInTouchMode="true" />
 
-    <!-- Overlay HUD: Connection and Diagnostics -->
+    <!-- Visual Pointer Crosshair (follows Huion pen in real-time) -->
+    <View
+        android:id="@+id/cursorIndicator"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:background="@android:drawable/presence_online"
+        android:visibility="gone" />
+
+    <!-- Connection UI -->
     <LinearLayout
         android:id="@+id/overlayLayout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:orientation="vertical"
-        android:background="#DD1E1E1E"
+        android:background="#EE1E1E1E"
         android:padding="24dp"
         android:elevation="8dp">
 
@@ -46,7 +54,7 @@
             android:id="@+id/hostIpInput"
             android:layout_width="260dp"
             android:layout_height="wrap_content"
-            android:hint="PC IP (e.g. 192.168.1.100)"
+            android:hint="PC IP (e.g. 192.168.0.89)"
             android:textColor="#FFFFFF"
             android:textColorHint="#666666"
             android:background="#333333"
@@ -65,18 +73,34 @@
             android:textSize="16sp" />
     </LinearLayout>
 
+    <!-- Always-Visible Real-Time Mouse / Huion Tablet Diagnostics Overlay -->
+    <TextView
+        android:id="@+id/debugOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_margin="10dp"
+        android:background="#CC111111"
+        android:padding="10dp"
+        android:textColor="#00FF66"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:elevation="12dp"
+        android:text="[HUION DEBUG] Move pen over tablet to detect input..." />
+
     <!-- Tiny status pill in corner during streaming -->
     <TextView
         android:id="@+id/statsOverlay"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
-        android:layout_margin="12dp"
-        android:background="#88000000"
-        android:padding="6dp"
-        android:textColor="#00FF00"
-        android:textSize="11sp"
-        android:text="S-Pen: Ready | 60 FPS"
+        android:layout_margin="10dp"
+        android:background="#CC000000"
+        android:padding="8dp"
+        android:textColor="#38BDF8"
+        android:textSize="12sp"
+        android:elevation="12dp"
+        android:text="Status: Ready"
         android:visibility="gone" />
 
 </FrameLayout>

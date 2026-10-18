@@ -30,6 +30,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var hostIpInput: EditText
     private lateinit var connectButton: Button
     private lateinit var statsOverlay: TextView
+    private lateinit var debugOverlay: TextView
+    private lateinit var cursorIndicator: View
 
     private var transport: UltraTransport? = null
     private var decoder: UltraVideoDecoder? = null
@@ -54,6 +56,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         hostIpInput = findViewById(R.id.hostIpInput)
         connectButton = findViewById(R.id.connectButton)
         statsOverlay = findViewById(R.id.statsOverlay)
+        debugOverlay = findViewById(R.id.debugOverlay)
+        cursorIndicator = findViewById(R.id.cursorIndicator)
 
         surfaceView.holder.addCallback(this)
         surfaceView.isFocusable = true
@@ -65,6 +69,20 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         screenHeight = metrics.heightPixels
         screenDpi = metrics.densityDpi
         refreshRate = windowManager.defaultDisplay.refreshRate.toInt()
+
+        // Initialize S-Pen & Huion manager immediately so user can debug input before connecting
+        spenManager = UltraSPenManager(null, surfaceView, debugOverlay, cursorIndicator)
+
+        // Attach listeners to window decorView to catch all Xiaomi/MIUI pointer events
+        window.decorView.setOnGenericMotionListener { _, event ->
+            spenManager?.handleGenericMotion("decorGeneric", event) ?: false
+        }
+        window.decorView.setOnHoverListener { _, event ->
+            spenManager?.handleGenericMotion("decorHover", event) ?: false
+        }
+        window.decorView.setOnTouchListener { _, event ->
+            spenManager?.handleTouchEvent("decorTouch", event) ?: false
+        }
 
         setupTransport()
 
@@ -119,15 +137,15 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                     isConnected = true
                     overlayLayout.visibility = View.GONE
                     statsOverlay.visibility = View.VISIBLE
-                    statsOverlay.text = "Pen: Ready | ${streamWidth}x${streamHeight} @ ${fps}fps"
+                    statsOverlay.text = "Stream: ${streamWidth}x${streamHeight} @ ${fps}fps"
                     connectButton.text = "Disconnect"
 
                     // Start hardware video decoder
                     decoder = UltraVideoDecoder(surfaceView.holder.surface, streamWidth, streamHeight)
                     decoder?.start()
 
-                    // Start S-Pen Manager with on-screen HUD
-                    spenManager = UltraSPenManager(transport!!, surfaceView, statsOverlay)
+                    // Link transport to S-Pen / Huion manager
+                    spenManager?.transport = transport
 
                     surfaceView.requestFocus()
                 }
@@ -142,14 +160,10 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
     /**
      * Intercepts all hover and generic mouse movements across the entire Activity window.
-     * Guarantees external OTG tablets are captured without being dropped by child view focus.
+     * Guarantees external Huion tablets are captured on Xiaomi MIUI/HyperOS.
      */
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        if (isConnected && spenManager != null) {
-            if (spenManager?.handleGenericMotion(event) == true) {
-                return true
-            }
-        }
+        spenManager?.handleGenericMotion("dispatchGeneric", event)
         return super.dispatchGenericMotionEvent(event)
     }
 
@@ -157,12 +171,18 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
      * Intercepts all touch and pen clicks across the Activity window.
      */
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        if (isConnected && spenManager != null) {
-            if (spenManager?.handleTouchEvent(event) == true) {
-                return true
-            }
-        }
+        spenManager?.handleTouchEvent("dispatchTouch", event)
         return super.dispatchTouchEvent(event)
+    }
+
+    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+        spenManager?.handleGenericMotion("onGenericMotion", event)
+        return super.onGenericMotionEvent(event)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        spenManager?.handleTouchEvent("onTouchEvent", event)
+        return super.onTouchEvent(event)
     }
 
     private fun onDisconnectedUI(reason: String) {
@@ -173,7 +193,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         connectButton.text = "Connect"
         decoder?.stop()
         decoder = null
-        spenManager = null
+        spenManager?.transport = null
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {}

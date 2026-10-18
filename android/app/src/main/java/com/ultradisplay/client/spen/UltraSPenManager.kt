@@ -1,5 +1,6 @@
 package com.ultradisplay.client.spen
 
+import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import android.widget.TextView
@@ -10,13 +11,15 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class UltraSPenManager(
-    private val transport: UltraTransport,
+    var transport: UltraTransport?,
     private val surfaceView: View,
-    private val hud: TextView? = null
+    private val debugOverlay: TextView? = null,
+    private val cursorIndicator: View? = null
 ) : View.OnTouchListener, View.OnHoverListener, View.OnGenericMotionListener {
 
     private var wasTouching = false
     private var wasHovering = false
+    private var eventCount = 0
 
     companion object {
         const val PKT_INPUT_SPEN: Byte = 0x10
@@ -39,45 +42,35 @@ class UltraSPenManager(
     }
 
     override fun onHover(v: View, event: MotionEvent): Boolean {
-        return handleGenericMotion(event)
+        return handleGenericMotion("onHover", event)
     }
 
     override fun onGenericMotion(v: View, event: MotionEvent): Boolean {
-        return handleGenericMotion(event)
+        return handleGenericMotion("onGenericMotion", event)
     }
 
     override fun onTouch(v: View, event: MotionEvent): Boolean {
-        return handleTouchEvent(event)
+        return handleTouchEvent("onTouch", event)
     }
 
-    /**
-     * Intercepts all hover and generic mouse movements across the screen.
-     * Works with S-Pen hover and OTG drawing tablets (which Android classifies as Mouse).
-     */
-    fun handleGenericMotion(event: MotionEvent): Boolean {
-        val action = event.actionMasked
-
-        // Check if this is contact (button pressed or pressure detected)
+    fun handleGenericMotion(callerMethod: String, event: MotionEvent): Boolean {
+        eventCount++
         val isButtonDown = event.buttonState != 0
         val hasPressure = event.pressure > 0.015f
 
         if (isButtonDown || hasPressure) {
-            handleSPenTouch(event)
+            handleSPenTouch(callerMethod, event)
             return true
         }
 
-        // Gliding in the air without contact = Pure Hover
-        handleSPenHover(event)
+        handleSPenHover(callerMethod, event)
         return true
     }
 
-    /**
-     * Intercepts physical screen touches and pen presses.
-     */
-    fun handleTouchEvent(event: MotionEvent): Boolean {
+    fun handleTouchEvent(callerMethod: String, event: MotionEvent): Boolean {
+        eventCount++
         val toolType = event.getToolType(0)
 
-        // If multiple fingers on screen: Multitouch pan/zoom
         if (toolType == MotionEvent.TOOL_TYPE_FINGER && event.pointerCount > 1) {
             handleMultitouch(event)
             return true
@@ -87,16 +80,15 @@ class UltraSPenManager(
         val isContact = (event.buttonState != 0 || event.pressure > 0.015f)
 
         if (!isRelease && !isContact && event.actionMasked != MotionEvent.ACTION_DOWN) {
-            // Mouse moved without clicking = Hover
-            handleSPenHover(event)
+            handleSPenHover(callerMethod, event)
             return true
         }
 
-        handleSPenTouch(event)
+        handleSPenTouch(callerMethod, event)
         return true
     }
 
-    private fun handleSPenHover(event: MotionEvent) {
+    private fun handleSPenHover(callerMethod: String, event: MotionEvent) {
         val width = surfaceView.width.toFloat().coerceAtLeast(1f)
         val height = surfaceView.height.toFloat().coerceAtLeast(1f)
 
@@ -105,12 +97,11 @@ class UltraSPenManager(
 
         val tiltRad = event.getAxisValue(MotionEvent.AXIS_TILT)
         val orientRad = event.getAxisValue(MotionEvent.AXIS_ORIENTATION)
-
         val tiltDeg = Math.toDegrees(tiltRad.toDouble())
         val tiltX = (tiltDeg * sin(orientRad.toDouble())).toInt().coerceIn(-90, 90).toByte()
         val tiltY = (-tiltDeg * cos(orientRad.toDouble())).toInt().coerceIn(-90, 90).toByte()
-
         val rotation = ((Math.toDegrees(orientRad.toDouble()) + 360) % 360).toInt().toShort()
+
         val barrel = event.isButtonPressed(MotionEvent.BUTTON_STYLUS_PRIMARY) ||
                      event.isButtonPressed(MotionEvent.BUTTON_SECONDARY)
         val isEraser = event.getToolType(0) == MotionEvent.TOOL_TYPE_ERASER ||
@@ -128,15 +119,12 @@ class UltraSPenManager(
             wasHovering = true
         }
 
-        hud?.post {
-            hud.text = "Pen: HOVER (${(normX * 100).toInt()}%, ${(normY * 100).toInt()}%)"
-        }
+        updateHUD(callerMethod, event, normX, normY, isHover = true, rawPressure = 0f)
 
-        // Pressure is strictly 0 when gliding in air during hover
         sendSPenPacket(flags, normX, normY, 0, tiltX, tiltY, rotation, event.eventTime)
     }
 
-    private fun handleSPenTouch(event: MotionEvent) {
+    private fun handleSPenTouch(callerMethod: String, event: MotionEvent) {
         val width = surfaceView.width.toFloat().coerceAtLeast(1f)
         val height = surfaceView.height.toFloat().coerceAtLeast(1f)
 
@@ -153,7 +141,7 @@ class UltraSPenManager(
                        event.isButtonPressed(MotionEvent.BUTTON_STYLUS_SECONDARY) ||
                        event.isButtonPressed(MotionEvent.BUTTON_TERTIARY)
 
-        // Process batch historical points for 120Hz/240Hz ultra-smooth stroke recording
+        // Process batch historical points
         val historySize = event.historySize
         for (h in 0 until historySize) {
             val hx = (event.getHistoricalX(0, h) / width).coerceIn(0f, 1f)
@@ -172,7 +160,6 @@ class UltraSPenManager(
             sendSPenPacket(hFlags, hx, hy, hp, tiltX, tiltY, rotation, event.getHistoricalEventTime(h))
         }
 
-        // Current point
         val normX = (event.x / width).coerceIn(0f, 1f)
         val normY = (event.y / height).coerceIn(0f, 1f)
         val rawP = event.pressure
@@ -208,15 +195,74 @@ class UltraSPenManager(
             }
         }
 
-        hud?.post {
-            if (isRelease) {
-                hud.text = "Pen: HOVER (${(normX * 100).toInt()}%, ${(normY * 100).toInt()}%)"
-            } else {
-                hud.text = "Pen: DRAW (${(normX * 100).toInt()}%, ${(normY * 100).toInt()}%) P:${((pressure.toFloat() / 4095f) * 100).toInt()}%"
-            }
-        }
+        updateHUD(callerMethod, event, normX, normY, isHover = isRelease, rawPressure = rawP)
 
         sendSPenPacket(flags, normX, normY, pressure, tiltX, tiltY, rotation, event.eventTime)
+    }
+
+    private fun updateHUD(callerMethod: String, event: MotionEvent, normX: Float, normY: Float, isHover: Boolean, rawPressure: Float) {
+        debugOverlay?.post {
+            val actionStr = when (event.actionMasked) {
+                MotionEvent.ACTION_HOVER_MOVE -> "HOVER_MOVE"
+                MotionEvent.ACTION_HOVER_ENTER -> "HOVER_ENTER"
+                MotionEvent.ACTION_HOVER_EXIT -> "HOVER_EXIT"
+                MotionEvent.ACTION_MOVE -> "MOVE"
+                MotionEvent.ACTION_DOWN -> "DOWN"
+                MotionEvent.ACTION_UP -> "UP"
+                MotionEvent.ACTION_CANCEL -> "CANCEL"
+                MotionEvent.ACTION_SCROLL -> "SCROLL"
+                else -> "ACT_${event.actionMasked}"
+            }
+
+            val toolStr = when (event.getToolType(0)) {
+                MotionEvent.TOOL_TYPE_STYLUS -> "STYLUS"
+                MotionEvent.TOOL_TYPE_MOUSE -> "MOUSE"
+                MotionEvent.TOOL_TYPE_ERASER -> "ERASER"
+                MotionEvent.TOOL_TYPE_FINGER -> "FINGER"
+                MotionEvent.TOOL_TYPE_UNKNOWN -> "UNKNOWN"
+                else -> "TOOL_${event.getToolType(0)}"
+            }
+
+            val sourceStr = buildString {
+                val s = event.source
+                if (s and InputDevice.SOURCE_MOUSE == InputDevice.SOURCE_MOUSE) append("MOUSE ")
+                if (s and InputDevice.SOURCE_STYLUS == InputDevice.SOURCE_STYLUS) append("STYLUS ")
+                if (s and InputDevice.SOURCE_TOUCHSCREEN == InputDevice.SOURCE_TOUCHSCREEN) append("TOUCHSCREEN ")
+                if (s and InputDevice.SOURCE_CLASS_POINTER != 0) append("POINTER ")
+                if (isEmpty()) append("0x${Integer.toHexString(s)}")
+            }
+
+            val buttonsStr = buildString {
+                val b = event.buttonState
+                if (b and MotionEvent.BUTTON_PRIMARY != 0) append("PRIM ")
+                if (b and MotionEvent.BUTTON_SECONDARY != 0) append("SEC ")
+                if (b and MotionEvent.BUTTON_TERTIARY != 0) append("TERT ")
+                if (b and MotionEvent.BUTTON_STYLUS_PRIMARY != 0) append("STYLUS1 ")
+                if (b and MotionEvent.BUTTON_STYLUS_SECONDARY != 0) append("STYLUS2 ")
+                if (isEmpty()) append("NONE")
+            }
+
+            val isStreaming = (transport != null)
+            debugOverlay.text = """
+                [HUION / MOUSE DEBUG - XIAOMI 12 LITE]
+                Caller:       $callerMethod
+                Action:       $actionStr (${event.actionMasked})
+                Mode:         ${if (isHover) "HOVER (In Air)" else "DRAWING (Contact)"}
+                Screen Pos:   X: ${event.x.toInt()}, Y: ${event.y.toInt()}
+                Normalized:   (${"%.3f".format(normX)}, ${"%.3f".format(normY)})
+                Tool Type:    $toolStr (${event.getToolType(0)})
+                Source:       $sourceStr
+                Pressure:     ${"%.4f".format(rawPressure)}
+                Buttons:      $buttonsStr
+                Total Events: $eventCount ${if (isStreaming) "[STREAMING -> PC]" else "[STANDBY]"}
+            """.trimIndent()
+
+            cursorIndicator?.let { indicator ->
+                indicator.visibility = View.VISIBLE
+                indicator.x = event.x - (indicator.width / 2f)
+                indicator.y = event.y - (indicator.height / 2f)
+            }
+        }
     }
 
     private fun handleMultitouch(event: MotionEvent) {
@@ -224,16 +270,12 @@ class UltraSPenManager(
         val height = surfaceView.height.toFloat().coerceAtLeast(1f)
         val pointerCount = event.pointerCount.coerceAtMost(10)
 
-        // Header: 8 bytes, TouchEvent: 1 byte count + 10 * 10 bytes contacts + 4 bytes timestamp = 105 bytes
         val buf = ByteBuffer.allocate(8 + 105).order(ByteOrder.LITTLE_ENDIAN)
-
-        // UDisHeader
         buf.putInt(0x55444953) // MAGIC
         buf.put(PKT_INPUT_TOUCH)
         buf.put(1) // VERSION
         buf.putShort(105) // payloadLen
 
-        // UDisTouchEvent
         buf.put(pointerCount.toByte())
 
         for (i in 0 until 10) {
@@ -255,13 +297,12 @@ class UltraSPenManager(
                 buf.putFloat(normY)
                 buf.putFloat(size)
             } else {
-                // Empty padding contact
                 buf.put(0); buf.put(0); buf.putFloat(0f); buf.putFloat(0f); buf.putFloat(0f)
             }
         }
 
         buf.putInt(event.eventTime.toInt())
-        transport.sendAsync(buf.array())
+        transport?.sendAsync(buf.array())
     }
 
     private fun sendSPenPacket(
@@ -274,17 +315,13 @@ class UltraSPenManager(
         rotation: Short,
         timestampMs: Long
     ) {
-        // UDisHeader: 8 bytes
-        // UDisSPenEvent: 2 (flags) + 4 (normX) + 4 (normY) + 2 (pressure) + 1 (tiltX) + 1 (tiltY) + 2 (rotation) + 4 (timestamp) = 20 bytes
+        val t = transport ?: return
         val buf = ByteBuffer.allocate(28).order(ByteOrder.LITTLE_ENDIAN)
-
-        // Header
         buf.putInt(0x55444953) // MAGIC
         buf.put(PKT_INPUT_SPEN)
         buf.put(1) // VERSION
         buf.putShort(20) // payloadLen
 
-        // Payload
         buf.putShort(flags)
         buf.putFloat(normX)
         buf.putFloat(normY)
@@ -294,6 +331,6 @@ class UltraSPenManager(
         buf.putShort(rotation)
         buf.putInt(timestampMs.toInt())
 
-        transport.sendAsync(buf.array())
+        t.sendAsync(buf.array())
     }
 }

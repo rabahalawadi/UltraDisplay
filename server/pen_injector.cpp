@@ -140,19 +140,7 @@ bool PenInjector::InjectSPen(const UDisSPenEvent& ev) {
     bool isInRange = (ev.flags & SPEN_FLAG_INRANGE) != 0;
     bool barrel = (ev.flags & SPEN_FLAG_BARREL) != 0;
 
-    // 1. In Hover state (!isDown): Always move cursor without clicking
-    if (!isDown) {
-        if (m_wasDown) {
-            // Lifted pen tip off tablet: ensure mouse button release is posted
-            SendMouseAbsolute(pt.x, pt.y, MOUSEEVENTF_MOVE | MOUSEEVENTF_LEFTUP);
-            m_wasDown = false;
-        } else {
-            // Gliding in air: smooth cursor hover without clicking
-            SendMouseAbsolute(pt.x, pt.y, MOUSEEVENTF_MOVE);
-        }
-    }
-
-    // 2. Windows Ink Synthetic Pen Injection (High-precision pressure, tilt & Ink messages)
+    // 1. Windows Ink Synthetic Pen Injection (Primary & Pure Windows Ink for Hover + Contact)
     if (m_hSyntheticPen && s_InjectSyntheticPointerInput) {
         POINTER_TYPE_INFO pti = {0};
         pti.type = PT_PEN;
@@ -226,10 +214,16 @@ bool PenInjector::InjectSPen(const UDisSPenEvent& ev) {
             m_wasInRange = isInRange;
             m_wasBarrel = barrel;
             return true;
+        } else {
+            DWORD err = GetLastError();
+            static int s_errCount = 0;
+            if (++s_errCount % 25 == 1) {
+                printf("[PenInjector] InjectSyntheticPointerInput failed (err: %lu, flags: 0x%08X)\n", err, flags);
+            }
         }
     }
 
-    // 3. Fallback Mouse Injection for drag and contact
+    // 2. Fallback Mouse Injection ONLY if Windows Ink synthetic device is unavailable or failed
     DWORD mouseFlags = MOUSEEVENTF_MOVE;
 
     if (barrel && !m_wasBarrel) {

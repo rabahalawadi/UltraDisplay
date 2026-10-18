@@ -73,17 +73,6 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         // Initialize S-Pen & Huion manager immediately so user can debug input before connecting
         spenManager = UltraSPenManager(null, surfaceView, debugOverlay, cursorIndicator)
 
-        // Attach listeners to window decorView to catch all Xiaomi/MIUI pointer events
-        window.decorView.setOnGenericMotionListener { _, event ->
-            spenManager?.handleGenericMotion("decorGeneric", event) ?: false
-        }
-        window.decorView.setOnHoverListener { _, event ->
-            spenManager?.handleGenericMotion("decorHover", event) ?: false
-        }
-        window.decorView.setOnTouchListener { _, event ->
-            spenManager?.handleTouchEvent("decorTouch", event) ?: false
-        }
-
         setupTransport()
 
         connectButton.setOnClickListener {
@@ -163,7 +152,9 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
      * Guarantees external Huion tablets are captured on Xiaomi MIUI/HyperOS.
      */
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        spenManager?.handleGenericMotion("dispatchGeneric", event)
+        if (spenManager?.handleGenericMotion("dispatchGeneric", event) == true) {
+            return true
+        }
         return super.dispatchGenericMotionEvent(event)
     }
 
@@ -171,18 +162,10 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
      * Intercepts all touch and pen clicks across the Activity window.
      */
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        spenManager?.handleTouchEvent("dispatchTouch", event)
+        if (isConnected && spenManager?.handleTouchEvent("dispatchTouch", event) == true) {
+            return true
+        }
         return super.dispatchTouchEvent(event)
-    }
-
-    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        spenManager?.handleGenericMotion("onGenericMotion", event)
-        return super.onGenericMotionEvent(event)
-    }
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        spenManager?.handleTouchEvent("onTouchEvent", event)
-        return super.onTouchEvent(event)
     }
 
     private fun onDisconnectedUI(reason: String) {

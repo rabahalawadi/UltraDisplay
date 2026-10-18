@@ -71,7 +71,8 @@ class UltraSPenManager(
         eventCount++
         val toolType = event.getToolType(0)
 
-        if (toolType == MotionEvent.TOOL_TYPE_FINGER && event.pointerCount > 1) {
+        // Route finger touches strictly to multitouch (never convert to S-Pen / Cintiq drawing clicks)
+        if (toolType == MotionEvent.TOOL_TYPE_FINGER) {
             handleMultitouch(event)
             return true
         }

@@ -64,6 +64,30 @@ struct AppState {
 };
 
 static AppState g_app;
+static PrivateFontCollection* g_pPrivateFontCollection = nullptr;
+
+static void InitCairoFont() {
+    // Add Cairo font to current process font table so GDI and GDI+ recognize it
+    WCHAR exeDir[MAX_PATH] = {0};
+    GetModuleFileNameW(NULL, exeDir, MAX_PATH);
+    WCHAR* pSlash = wcsrchr(exeDir, L'\\');
+    if (pSlash) *(pSlash + 1) = L'\0';
+
+    WCHAR fontFile1[MAX_PATH];
+    wcscpy(fontFile1, exeDir);
+    wcscat(fontFile1, L"Cairo.ttf");
+
+    AddFontResourceExW(fontFile1, FR_PRIVATE, 0);
+    AddFontResourceExW(L"Cairo.ttf", FR_PRIVATE, 0);
+    AddFontResourceExW(L"C:\\Users\\rabah\\UltraDisplay\\server\\Cairo.ttf", FR_PRIVATE, 0);
+    AddFontResourceExW(L"C:\\Users\\rabah\\UltraDisplay\\fonts\\Cairo.ttf", FR_PRIVATE, 0);
+
+    g_pPrivateFontCollection = new PrivateFontCollection();
+    g_pPrivateFontCollection->AddFontFile(fontFile1);
+    g_pPrivateFontCollection->AddFontFile(L"Cairo.ttf");
+    g_pPrivateFontCollection->AddFontFile(L"C:\\Users\\rabah\\UltraDisplay\\server\\Cairo.ttf");
+    g_pPrivateFontCollection->AddFontFile(L"C:\\Users\\rabah\\UltraDisplay\\fonts\\Cairo.ttf");
+}
 
 static void CopyToClipboard(HWND hWnd, const std::string& text) {
     if (OpenClipboard(hWnd)) {
@@ -131,46 +155,56 @@ static void RenderUI(HWND hWnd, HDC hdc) {
 
     Bitmap backBuffer(width, height);
     Graphics g(&backBuffer);
-    g.SetSmoothingMode(SmoothingModeNone); // Crisp pixel-aligned geometric edges
+    g.SetSmoothingMode(SmoothingModeNone); // Crisp geometric alignment
     g.SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
 
-    // Deep Obsidian Background (#121214)
-    SolidBrush bgBrush(Color(255, 18, 18, 20));
+    // Charcoal Black Background (#121212)
+    SolidBrush bgBrush(Color(255, 18, 18, 18));
     g.FillRectangle(&bgBrush, 0, 0, width, height);
 
-    // Typography
-    FontFamily fontFamily(L"Segoe UI");
-    Font fontTitle(&fontFamily, 16, FontStyleBold, UnitPixel);
-    Font fontSubtitle(&fontFamily, 11, FontStyleRegular, UnitPixel);
-    Font fontTabActive(&fontFamily, 12, FontStyleBold, UnitPixel);
-    Font fontTabInactive(&fontFamily, 12, FontStyleRegular, UnitPixel);
-    Font fontSection(&fontFamily, 10, FontStyleBold, UnitPixel);
-    Font fontCardTitle(&fontFamily, 13, FontStyleBold, UnitPixel);
-    Font fontBody(&fontFamily, 11, FontStyleRegular, UnitPixel);
-    Font fontBold(&fontFamily, 11, FontStyleBold, UnitPixel);
-    Font fontMono(&fontFamily, 11, FontStyleBold, UnitPixel);
-    Font fontPill(&fontFamily, 10, FontStyleBold, UnitPixel);
-    Font fontSmall(&fontFamily, 9.5f, FontStyleRegular, UnitPixel);
+    // Typography using Cairo font
+    FontFamily* pFontFamily = nullptr;
+    if (g_pPrivateFontCollection) {
+        pFontFamily = new FontFamily(L"Cairo", g_pPrivateFontCollection);
+        if (pFontFamily->GetLastStatus() != Ok) {
+            delete pFontFamily;
+            pFontFamily = nullptr;
+        }
+    }
+    if (!pFontFamily) {
+        pFontFamily = new FontFamily(L"Cairo");
+        if (pFontFamily->GetLastStatus() != Ok) {
+            delete pFontFamily;
+            pFontFamily = new FontFamily(L"Segoe UI");
+        }
+    }
 
-    // Theme Brushes & Pens
-    SolidBrush textWhite(Color(255, 255, 255, 255));
-    SolidBrush textMuted(Color(255, 161, 161, 170));   // #A1A1AA
-    SolidBrush textSection(Color(255, 113, 113, 122)); // #71717A
-    SolidBrush textCyan(Color(255, 56, 189, 248));     // #38BDF8
-    SolidBrush textGreen(Color(255, 52, 211, 153));    // #34D399
-    SolidBrush textAmber(Color(255, 251, 191, 36));    // #FBBF24
-    SolidBrush textRed(Color(255, 239, 68, 68));       // #EF4444
+    Font fontTitle(pFontFamily, 16, FontStyleBold, UnitPixel);
+    Font fontSubtitle(pFontFamily, 11, FontStyleRegular, UnitPixel);
+    Font fontTabActive(pFontFamily, 12, FontStyleBold, UnitPixel);
+    Font fontTabInactive(pFontFamily, 12, FontStyleRegular, UnitPixel);
+    Font fontSection(pFontFamily, 10, FontStyleBold, UnitPixel);
+    Font fontCardTitle(pFontFamily, 13, FontStyleBold, UnitPixel);
+    Font fontBody(pFontFamily, 11, FontStyleRegular, UnitPixel);
+    Font fontBold(pFontFamily, 11, FontStyleBold, UnitPixel);
+    Font fontMono(pFontFamily, 11, FontStyleBold, UnitPixel);
+    Font fontPill(pFontFamily, 10, FontStyleBold, UnitPixel);
+    Font fontSmall(pFontFamily, 9.5f, FontStyleRegular, UnitPixel);
 
-    SolidBrush headerBg(Color(255, 24, 24, 27));       // #18181B
-    SolidBrush cardBg(Color(255, 30, 30, 36));         // #1E1E24
-    SolidBrush innerBoxBg(Color(255, 39, 39, 42));     // #27272A
-    SolidBrush activeBlue(Color(255, 37, 99, 235));    // #2563EB
-    SolidBrush btnStart(Color(255, 16, 185, 129));     // #10B981
-    SolidBrush btnStop(Color(255, 239, 68, 68));       // #EF4444
+    // Palette: Charcoal Black (#121212) & Light Gray/Off-White (#E0E0E0)
+    SolidBrush textOffWhite(Color(255, 224, 224, 224)); // #E0E0E0
+    SolidBrush textDark(Color(255, 18, 18, 18));        // #121212
+    SolidBrush textMuted(Color(255, 136, 136, 136));     // #888888
+    SolidBrush textSection(Color(255, 110, 110, 110));   // #6E6E6E
 
-    Pen borderSubtle(Color(255, 46, 46, 56), 1.0f);    // #2E2E38
-    Pen borderInner(Color(255, 63, 63, 70), 1.0f);     // #3F3F46
-    Pen borderActiveBlue(Color(255, 59, 130, 246), 1.0f); // #3B82F6
+    SolidBrush headerBg(Color(255, 24, 24, 24));         // #181818
+    SolidBrush cardBg(Color(255, 28, 28, 28));           // #1C1C1C
+    SolidBrush innerBoxBg(Color(255, 20, 20, 20));       // #141414
+    SolidBrush activeOffWhite(Color(255, 224, 224, 224));// #E0E0E0
+
+    Pen borderSubtle(Color(255, 44, 44, 44), 1.0f);      // #2C2C2C
+    Pen borderInner(Color(255, 56, 56, 56), 1.0f);       // #383838
+    Pen borderActive(Color(255, 224, 224, 224), 1.0f);   // #E0E0E0
 
     StringFormat sfCenter;
     sfCenter.SetAlignment(StringAlignmentCenter);
@@ -181,26 +215,24 @@ static void RenderUI(HWND hWnd, HDC hdc) {
     sfLeft.SetLineAlignment(StringAlignmentCenter);
 
     // ==========================================
-    // 1. TOP HEADER BAR (#18181B)
+    // 1. TOP HEADER BAR (#181818)
     // ==========================================
     RectF headerRect(0, 0, (float)width, 68.0f);
     DrawSharpRect(g, &headerBg, &borderSubtle, headerRect);
 
-    g.DrawString(L"UltraDisplay", -1, &fontTitle, PointF(24, 15), &textWhite);
+    g.DrawString(L"UltraDisplay", -1, &fontTitle, PointF(24, 15), &textOffWhite);
     g.DrawString(L"High-Performance Virtual Tablet Display", -1, &fontSubtitle, PointF(24, 38), &textMuted);
 
-    // Status Pill in Top Right
+    // Status Pill in Top Right (#1E1E1E)
     bool connected = g_app.server.IsClientConnected();
     bool running = g_app.server.IsRunning();
 
     RectF statusPill(width - 134.0f, 20.0f, 110.0f, 26.0f);
-    SolidBrush pillBg(Color(255, 39, 39, 42));
-    Pen pillBorder(connected ? Color(255, 52, 211, 153) : (running ? Color(255, 56, 189, 248) : Color(255, 239, 68, 68)), 1.0f);
-    DrawSharpRect(g, &pillBg, &pillBorder, statusPill);
+    SolidBrush pillBg(Color(255, 30, 30, 30));
+    DrawSharpRect(g, &pillBg, &borderInner, statusPill);
 
     std::wstring statusStr = connected ? L"STREAMING" : (running ? L"STANDBY" : L"STOPPED");
-    g.DrawString(statusStr.c_str(), -1, &fontPill, statusPill, &sfCenter, 
-                 connected ? &textGreen : (running ? &textCyan : &textRed));
+    g.DrawString(statusStr.c_str(), -1, &fontPill, statusPill, &sfCenter, &textOffWhite);
 
     // ==========================================
     // 2. SEGMENTED TAB NAVIGATION BAR: [ Connect ] [ Settings ] [ About Us ]
@@ -215,18 +247,18 @@ static void RenderUI(HWND hWnd, HDC hdc) {
 
     // Draw Tab 0: Connect
     bool isTab0 = (g_app.currentTab == TAB_CONNECT);
-    DrawSharpRect(g, isTab0 ? &activeBlue : &innerBoxBg, isTab0 ? &borderActiveBlue : &borderInner, tab0);
-    g.DrawString(L"Connect", -1, isTab0 ? &fontTabActive : &fontTabInactive, tab0, &sfCenter, isTab0 ? &textWhite : &textMuted);
+    DrawSharpRect(g, isTab0 ? &activeOffWhite : &cardBg, isTab0 ? nullptr : &borderSubtle, tab0);
+    g.DrawString(L"Connect", -1, isTab0 ? &fontTabActive : &fontTabInactive, tab0, &sfCenter, isTab0 ? &textDark : &textMuted);
 
     // Draw Tab 1: Settings
     bool isTab1 = (g_app.currentTab == TAB_SETTINGS);
-    DrawSharpRect(g, isTab1 ? &activeBlue : &innerBoxBg, isTab1 ? &borderActiveBlue : &borderInner, tab1);
-    g.DrawString(L"Settings", -1, isTab1 ? &fontTabActive : &fontTabInactive, tab1, &sfCenter, isTab1 ? &textWhite : &textMuted);
+    DrawSharpRect(g, isTab1 ? &activeOffWhite : &cardBg, isTab1 ? nullptr : &borderSubtle, tab1);
+    g.DrawString(L"Settings", -1, isTab1 ? &fontTabActive : &fontTabInactive, tab1, &sfCenter, isTab1 ? &textDark : &textMuted);
 
     // Draw Tab 2: About Us
     bool isTab2 = (g_app.currentTab == TAB_ABOUT);
-    DrawSharpRect(g, isTab2 ? &activeBlue : &innerBoxBg, isTab2 ? &borderActiveBlue : &borderInner, tab2);
-    g.DrawString(L"About Us", -1, isTab2 ? &fontTabActive : &fontTabInactive, tab2, &sfCenter, isTab2 ? &textWhite : &textMuted);
+    DrawSharpRect(g, isTab2 ? &activeOffWhite : &cardBg, isTab2 ? nullptr : &borderSubtle, tab2);
+    g.DrawString(L"About Us", -1, isTab2 ? &fontTabActive : &fontTabInactive, tab2, &sfCenter, isTab2 ? &textDark : &textMuted);
 
     float contentY = 138.0f;
     float contentW = width - 48.0f;
@@ -244,41 +276,41 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         RectF cableBtn(24.0f + modeW + 8.0f, contentY + 20.0f, modeW, 38.0f);
 
         bool isWifi = (g_app.currentMode == MODE_WIFI);
-        DrawSharpRect(g, isWifi ? &activeBlue : &innerBoxBg, isWifi ? &borderActiveBlue : &borderInner, wifiBtn);
-        DrawSharpRect(g, !isWifi ? &activeBlue : &innerBoxBg, !isWifi ? &borderActiveBlue : &borderInner, cableBtn);
+        DrawSharpRect(g, isWifi ? &activeOffWhite : &cardBg, isWifi ? nullptr : &borderSubtle, wifiBtn);
+        DrawSharpRect(g, !isWifi ? &activeOffWhite : &cardBg, !isWifi ? nullptr : &borderSubtle, cableBtn);
 
-        g.DrawString(L"Wi-Fi Mode", -1, isWifi ? &fontTabActive : &fontTabInactive, wifiBtn, &sfCenter, isWifi ? &textWhite : &textMuted);
-        g.DrawString(L"USB Cable Mode", -1, !isWifi ? &fontTabActive : &fontTabInactive, cableBtn, &sfCenter, !isWifi ? &textWhite : &textMuted);
+        g.DrawString(L"Wi-Fi Mode", -1, isWifi ? &fontTabActive : &fontTabInactive, wifiBtn, &sfCenter, isWifi ? &textDark : &textMuted);
+        g.DrawString(L"USB Cable Mode", -1, !isWifi ? &fontTabActive : &fontTabInactive, cableBtn, &sfCenter, !isWifi ? &textDark : &textMuted);
 
-        // Connection Card (#1E1E24)
+        // Connection Card (#1C1C1C)
         float card1Y = contentY + 70.0f;
         RectF connCard(24.0f, card1Y, contentW, 134.0f);
         DrawSharpRect(g, &cardBg, &borderSubtle, connCard);
 
         if (isWifi) {
-            g.DrawString(L"Mode: Wi-Fi (Local Network)", -1, &fontCardTitle, PointF(40, card1Y + 16), &textCyan);
+            g.DrawString(L"Mode: Wi-Fi (Local Network)", -1, &fontCardTitle, PointF(40, card1Y + 16), &textOffWhite);
             g.DrawString(L"HOST PC ADDRESS", -1, &fontSection, PointF(40, card1Y + 38), &textSection);
 
-            // IP Display Box
+            // IP Display Box (#141414)
             RectF ipBox(40.0f, card1Y + 54.0f, contentW - 130.0f, 36.0f);
             DrawSharpRect(g, &innerBoxBg, &borderInner, ipBox);
 
             std::string ipLabel = g_app.primaryIp + ":" + std::to_string(g_app.currentPort);
             std::wstring wIp(ipLabel.begin(), ipLabel.end());
             RectF ipTextRect(52.0f, card1Y + 54.0f, contentW - 146.0f, 36.0f);
-            g.DrawString(wIp.c_str(), -1, &fontMono, ipTextRect, &sfLeft, &textGreen);
+            g.DrawString(wIp.c_str(), -1, &fontMono, ipTextRect, &sfLeft, &textOffWhite);
 
-            // Copy IP Button
+            // Copy IP Button (Off-White #E0E0E0)
             RectF copyBtn(width - 138.0f, card1Y + 54.0f, 98.0f, 36.0f);
-            DrawSharpRect(g, &activeBlue, &borderActiveBlue, copyBtn);
-            g.DrawString(L"Copy IP", -1, &fontTabActive, copyBtn, &sfCenter, &textWhite);
+            DrawSharpRect(g, &activeOffWhite, nullptr, copyBtn);
+            g.DrawString(L"Copy IP", -1, &fontTabActive, copyBtn, &sfCenter, &textDark);
 
             g.DrawString(L"Auto-Discovery: Active (Android app detects this PC automatically)", -1, &fontSmall, PointF(40, card1Y + 102), &textSection);
         } else {
             bool usbPlugged = g_app.usb.IsDeviceConnected();
             std::string model = g_app.usb.GetConnectedDeviceModel();
 
-            g.DrawString(L"Mode: USB Cable (Direct Tunnel via 127.0.0.1)", -1, &fontCardTitle, PointF(40, card1Y + 16), &textCyan);
+            g.DrawString(L"Mode: USB Cable (Direct Tunnel via 127.0.0.1)", -1, &fontCardTitle, PointF(40, card1Y + 16), &textOffWhite);
             g.DrawString(L"ADB REVERSE TUNNEL STATUS", -1, &fontSection, PointF(40, card1Y + 38), &textSection);
 
             RectF usbBox(40.0f, card1Y + 54.0f, contentW - 32.0f, 36.0f);
@@ -288,12 +320,12 @@ static void RenderUI(HWND hWnd, HDC hdc) {
                 ? (L"Cable Ready: " + std::wstring(model.begin(), model.end()) + L" (Port Forwarded: 28443)")
                 : L"Waiting for USB device (ensure USB debugging is on)";
             RectF usbTextRect(52.0f, card1Y + 54.0f, contentW - 52.0f, 36.0f);
-            g.DrawString(usbStatusStr.c_str(), -1, &fontBold, usbTextRect, &sfLeft, usbPlugged ? &textGreen : &textAmber);
+            g.DrawString(usbStatusStr.c_str(), -1, &fontBold, usbTextRect, &sfLeft, &textOffWhite);
 
             g.DrawString(L"In UltraDisplay on Android, tap 'USB Cable Mode' to connect with 0ms latency.", -1, &fontSmall, PointF(40, card1Y + 102), &textSection);
         }
 
-        // Live Session Telemetry Card (#1E1E24)
+        // Live Session Telemetry Card (#1C1C1C)
         float card2Y = card1Y + 146.0f;
         RectF teleCard(24.0f, card2Y, contentW, 164.0f);
         DrawSharpRect(g, &cardBg, &borderSubtle, teleCard);
@@ -313,21 +345,21 @@ static void RenderUI(HWND hWnd, HDC hdc) {
 
         // Metric 1: Client
         g.DrawString(L"Connected Client:", -1, &fontSmall, PointF(40, card2Y + 36), &textMuted);
-        g.DrawString(wDev.c_str(), -1, &fontBold, PointF(40, card2Y + 52), &textWhite);
+        g.DrawString(wDev.c_str(), -1, &fontBold, PointF(40, card2Y + 52), &textOffWhite);
 
         // Metric 2: Windows Ink
         g.DrawString(L"Windows Ink Stylus:", -1, &fontSmall, PointF(40 + colW, card2Y + 36), &textMuted);
-        g.DrawString(winInk ? L"Active & Injected (Pure Stylus)" : L"Standby", -1, &fontBold, PointF(40 + colW, card2Y + 52), winInk ? &textGreen : &textMuted);
+        g.DrawString(winInk ? L"Active & Injected (Pure Stylus)" : L"Standby", -1, &fontBold, PointF(40 + colW, card2Y + 52), &textOffWhite);
 
         // Metric 3: Video Stream
         g.DrawString(L"Video Stream Performance:", -1, &fontSmall, PointF(40, card2Y + 84), &textMuted);
         std::wstring streamInfo = std::to_wstring(fps) + L" FPS @ " + std::to_wstring(bitrate) + L" Mbps (GPU H.264)";
-        g.DrawString(connected ? streamInfo.c_str() : L"Idle (Standby)", -1, &fontBold, PointF(40, card2Y + 100), connected ? &textCyan : &textMuted);
+        g.DrawString(connected ? streamInfo.c_str() : L"Idle (Standby)", -1, &fontBold, PointF(40, card2Y + 100), &textOffWhite);
 
         // Metric 4: Packets
         g.DrawString(L"Stylus Packets Injected:", -1, &fontSmall, PointF(40 + colW, card2Y + 84), &textMuted);
         std::wstring packetsStr = std::to_wstring(penPackets) + L" packets";
-        g.DrawString(packetsStr.c_str(), -1, &fontMono, PointF(40 + colW, card2Y + 100), &textWhite);
+        g.DrawString(packetsStr.c_str(), -1, &fontMono, PointF(40 + colW, card2Y + 100), &textOffWhite);
 
         // Compatibility footer
         g.DrawString(L"Compatibility: Krita, Photoshop, Clip Studio, Illustrator, OneNote (Windows Ink)", -1, &fontSmall, PointF(40, card2Y + 136), &textSection);
@@ -340,13 +372,14 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         RectF btnRestart(24.0f + btnW + 8.0f, btnY, btnW, 42.0f);
         RectF btnTray(24.0f + (btnW + 8.0f) * 2.0f, btnY, btnW, 42.0f);
 
-        DrawSharpRect(g, running ? &btnStop : &btnStart, nullptr, btnServer);
-        DrawSharpRect(g, &innerBoxBg, &borderInner, btnRestart);
-        DrawSharpRect(g, &innerBoxBg, &borderInner, btnTray);
+        // Primary Start/Stop button in Off-White #E0E0E0
+        DrawSharpRect(g, running ? &cardBg : &activeOffWhite, running ? &borderActive : nullptr, btnServer);
+        DrawSharpRect(g, &cardBg, &borderInner, btnRestart);
+        DrawSharpRect(g, &cardBg, &borderInner, btnTray);
 
-        g.DrawString(running ? L"Stop Server" : L"Start Server", -1, &fontTabActive, btnServer, &sfCenter, &textWhite);
-        g.DrawString(L"Restart Engine", -1, &fontTabActive, btnRestart, &sfCenter, &textWhite);
-        g.DrawString(L"Hide to Tray", -1, &fontTabActive, btnTray, &sfCenter, &textWhite);
+        g.DrawString(running ? L"Stop Server" : L"Start Server", -1, &fontTabActive, btnServer, &sfCenter, running ? &textOffWhite : &textDark);
+        g.DrawString(L"Restart Engine", -1, &fontTabActive, btnRestart, &sfCenter, &textOffWhite);
+        g.DrawString(L"Hide to Tray", -1, &fontTabActive, btnTray, &sfCenter, &textOffWhite);
     }
     // ==========================================
     // TAB 1: SETTINGS
@@ -354,7 +387,7 @@ static void RenderUI(HWND hWnd, HDC hdc) {
     else if (g_app.currentTab == TAB_SETTINGS) {
         g.DrawString(L"DISPLAY & STREAMING", -1, &fontSection, PointF(24, contentY), &textSection);
 
-        // Card 1: Display & Streaming
+        // Card 1: Display & Streaming (#1C1C1C)
         float sCard1Y = contentY + 20.0f;
         RectF sCard1(24.0f, sCard1Y, contentW, 140.0f);
         DrawSharpRect(g, &cardBg, &borderSubtle, sCard1);
@@ -365,10 +398,10 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         RectF fps60(40.0f + fpsBtnW + 8.0f, sCard1Y + 30.0f, fpsBtnW, 32.0f);
 
         bool is120 = (g_app.targetFps == 120);
-        DrawSharpRect(g, is120 ? &activeBlue : &innerBoxBg, is120 ? &borderActiveBlue : &borderInner, fps120);
-        DrawSharpRect(g, !is120 ? &activeBlue : &innerBoxBg, !is120 ? &borderActiveBlue : &borderInner, fps60);
-        g.DrawString(L"Ultra 120 FPS", -1, is120 ? &fontTabActive : &fontTabInactive, fps120, &sfCenter, is120 ? &textWhite : &textMuted);
-        g.DrawString(L"Standard 60 FPS", -1, !is120 ? &fontTabActive : &fontTabInactive, fps60, &sfCenter, !is120 ? &textWhite : &textMuted);
+        DrawSharpRect(g, is120 ? &activeOffWhite : &innerBoxBg, is120 ? nullptr : &borderInner, fps120);
+        DrawSharpRect(g, !is120 ? &activeOffWhite : &innerBoxBg, !is120 ? nullptr : &borderInner, fps60);
+        g.DrawString(L"Ultra 120 FPS", -1, is120 ? &fontTabActive : &fontTabInactive, fps120, &sfCenter, is120 ? &textDark : &textMuted);
+        g.DrawString(L"Standard 60 FPS", -1, !is120 ? &fontTabActive : &fontTabInactive, fps60, &sfCenter, !is120 ? &textDark : &textMuted);
 
         g.DrawString(L"HARDWARE ENCODER BITRATE", -1, &fontSection, PointF(40, sCard1Y + 74), &textSection);
         float bBtnW = (contentW - 48.0f) / 3.0f;
@@ -376,15 +409,15 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         RectF br15(40.0f + bBtnW + 8.0f, sCard1Y + 90.0f, bBtnW, 32.0f);
         RectF br8(40.0f + (bBtnW + 8.0f) * 2.0f, sCard1Y + 90.0f, bBtnW, 32.0f);
 
-        DrawSharpRect(g, g_app.targetBitrateMbps == 25 ? &activeBlue : &innerBoxBg, g_app.targetBitrateMbps == 25 ? &borderActiveBlue : &borderInner, br25);
-        DrawSharpRect(g, g_app.targetBitrateMbps == 15 ? &activeBlue : &innerBoxBg, g_app.targetBitrateMbps == 15 ? &borderActiveBlue : &borderInner, br15);
-        DrawSharpRect(g, g_app.targetBitrateMbps == 8 ? &activeBlue : &innerBoxBg, g_app.targetBitrateMbps == 8 ? &borderActiveBlue : &borderInner, br8);
+        DrawSharpRect(g, g_app.targetBitrateMbps == 25 ? &activeOffWhite : &innerBoxBg, g_app.targetBitrateMbps == 25 ? nullptr : &borderInner, br25);
+        DrawSharpRect(g, g_app.targetBitrateMbps == 15 ? &activeOffWhite : &innerBoxBg, g_app.targetBitrateMbps == 15 ? nullptr : &borderInner, br15);
+        DrawSharpRect(g, g_app.targetBitrateMbps == 8 ? &activeOffWhite : &innerBoxBg, g_app.targetBitrateMbps == 8 ? nullptr : &borderInner, br8);
 
-        g.DrawString(L"25 Mbps (Ultra)", -1, g_app.targetBitrateMbps == 25 ? &fontTabActive : &fontTabInactive, br25, &sfCenter, g_app.targetBitrateMbps == 25 ? &textWhite : &textMuted);
-        g.DrawString(L"15 Mbps (High)", -1, g_app.targetBitrateMbps == 15 ? &fontTabActive : &fontTabInactive, br15, &sfCenter, g_app.targetBitrateMbps == 15 ? &textWhite : &textMuted);
-        g.DrawString(L"8 Mbps (Balanced)", -1, g_app.targetBitrateMbps == 8 ? &fontTabActive : &fontTabInactive, br8, &sfCenter, g_app.targetBitrateMbps == 8 ? &textWhite : &textMuted);
+        g.DrawString(L"25 Mbps (Ultra)", -1, g_app.targetBitrateMbps == 25 ? &fontTabActive : &fontTabInactive, br25, &sfCenter, g_app.targetBitrateMbps == 25 ? &textDark : &textMuted);
+        g.DrawString(L"15 Mbps (High)", -1, g_app.targetBitrateMbps == 15 ? &fontTabActive : &fontTabInactive, br15, &sfCenter, g_app.targetBitrateMbps == 15 ? &textDark : &textMuted);
+        g.DrawString(L"8 Mbps (Balanced)", -1, g_app.targetBitrateMbps == 8 ? &fontTabActive : &fontTabInactive, br8, &sfCenter, g_app.targetBitrateMbps == 8 ? &textDark : &textMuted);
 
-        // Card 2: Stylus & Digitizer
+        // Card 2: Stylus & Digitizer (#1C1C1C)
         float sCard2Y = sCard1Y + 154.0f;
         g.DrawString(L"STYLUS & WINDOWS INK", -1, &fontSection, PointF(24, sCard2Y - 14), &textSection);
 
@@ -395,15 +428,15 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         RectF engBox(40.0f, sCard2Y + 30.0f, contentW - 32.0f, 28.0f);
         DrawSharpRect(g, &innerBoxBg, &borderInner, engBox);
         RectF engText(52.0f, sCard2Y + 30.0f, contentW - 52.0f, 28.0f);
-        g.DrawString(L"InjectSyntheticPointerInput (Native Windows Ink Indirect Tablet)", -1, &fontBold, engText, &sfLeft, &textGreen);
+        g.DrawString(L"InjectSyntheticPointerInput (Native Windows Ink Indirect Tablet)", -1, &fontBold, engText, &sfLeft, &textOffWhite);
 
         g.DrawString(L"PRESSURE & TILT RESOLUTION", -1, &fontSection, PointF(40, sCard2Y + 68), &textSection);
         RectF resBox(40.0f, sCard2Y + 84.0f, contentW - 32.0f, 28.0f);
         DrawSharpRect(g, &innerBoxBg, &borderInner, resBox);
         RectF resText(52.0f, sCard2Y + 84.0f, contentW - 52.0f, 28.0f);
-        g.DrawString(L"8192 Pressure Levels & Hardware Tilt X/Y (-90 to +90 deg)", -1, &fontBold, resText, &sfLeft, &textWhite);
+        g.DrawString(L"8192 Pressure Levels & Hardware Tilt X/Y (-90 to +90 deg)", -1, &fontBold, resText, &sfLeft, &textOffWhite);
 
-        // Card 3: Host Environment
+        // Card 3: Host Environment (#1C1C1C)
         float sCard3Y = sCard2Y + 128.0f;
         g.DrawString(L"HOST ENVIRONMENT & NETWORK", -1, &fontSection, PointF(24, sCard3Y - 14), &textSection);
 
@@ -419,12 +452,12 @@ static void RenderUI(HWND hWnd, HDC hdc) {
     // TAB 2: ABOUT US
     // ==========================================
     else if (g_app.currentTab == TAB_ABOUT) {
-        // Card 1: App Info
+        // Card 1: App Info (#1C1C1C)
         RectF aCard1(24.0f, contentY, contentW, 206.0f);
         DrawSharpRect(g, &cardBg, &borderSubtle, aCard1);
 
-        g.DrawString(L"UltraDisplay v2.0", -1, &fontTitle, PointF(40, contentY + 18), &textCyan);
-        g.DrawString(L"Created by Rabah Alawadi", -1, &fontBold, PointF(40, contentY + 44), &textWhite);
+        g.DrawString(L"UltraDisplay v2.0", -1, &fontTitle, PointF(40, contentY + 18), &textOffWhite);
+        g.DrawString(L"Created by Rabah Alawadi", -1, &fontBold, PointF(40, contentY + 44), &textMuted);
 
         RectF descRect(40.0f, contentY + 70.0f, contentW - 32.0f, 64.0f);
         g.DrawString(
@@ -432,15 +465,15 @@ static void RenderUI(HWND hWnd, HDC hdc) {
             -1, &fontBody, descRect, &sfLeft, &textMuted
         );
 
-        // Clickable GitHub Button
+        // Clickable GitHub Button (Off-White #E0E0E0)
         RectF gitBtn(40.0f, contentY + 148.0f, contentW - 32.0f, 38.0f);
-        DrawSharpRect(g, &activeBlue, &borderActiveBlue, gitBtn);
-        g.DrawString(L"GitHub: github.com/rabahalawadi/UltraDisplay", -1, &fontTabActive, gitBtn, &sfCenter, &textWhite);
+        DrawSharpRect(g, &activeOffWhite, nullptr, gitBtn);
+        g.DrawString(L"GitHub: github.com/rabahalawadi/UltraDisplay", -1, &fontTabActive, gitBtn, &sfCenter, &textDark);
 
-        // Card 2: Key Technologies
+        // Card 2: Key Technologies (#181818)
         float aCard2Y = contentY + 220.0f;
         RectF aCard2(24.0f, aCard2Y, contentW, 140.0f);
-        DrawSharpRect(g, &innerBoxBg, &borderInner, aCard2);
+        DrawSharpRect(g, &headerBg, &borderSubtle, aCard2);
 
         g.DrawString(L"KEY TECHNOLOGIES", -1, &fontSection, PointF(40, aCard2Y + 14), &textSection);
 
@@ -454,6 +487,8 @@ static void RenderUI(HWND hWnd, HDC hdc) {
         g.DrawString(techs.c_str(), -1, &fontBody, techRect, &sfLeft, &textMuted);
     }
 
+    if (pFontFamily) delete pFontFamily;
+
     // Blit to screen
     Graphics windowGraphics(hdc);
     windowGraphics.DrawImage(&backBuffer, 0, 0);
@@ -465,6 +500,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
         BOOL useDarkMode = TRUE;
         DwmSetWindowAttribute(hWnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &useDarkMode, sizeof(useDarkMode));
 
+        InitCairoFont();
         RefreshLocalIps();
 
         // System Tray Icon
@@ -685,6 +721,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
         KillTimer(hWnd, ID_TIMER_TELEMETRY);
         g_app.usb.StopMonitoring();
         g_app.server.Stop();
+        if (g_pPrivateFontCollection) {
+            delete g_pPrivateFontCollection;
+            g_pPrivateFontCollection = nullptr;
+        }
         PostQuitMessage(0);
         break;
 

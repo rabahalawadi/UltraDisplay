@@ -123,20 +123,20 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         var lastWifiIp = "192.168.0.89"
 
         wifiModeBtn.setOnClickListener {
-            wifiModeBtn.setBackgroundColor(Color.parseColor("#2563EB"))
-            wifiModeBtn.setTextColor(Color.WHITE)
-            cableModeBtn.setBackgroundColor(Color.parseColor("#27272A"))
-            cableModeBtn.setTextColor(Color.parseColor("#AAAAAA"))
+            wifiModeBtn.setBackgroundColor(Color.parseColor("#E0E0E0"))
+            wifiModeBtn.setTextColor(Color.parseColor("#121212"))
+            cableModeBtn.setBackgroundColor(Color.parseColor("#1C1C1C"))
+            cableModeBtn.setTextColor(Color.parseColor("#888888"))
             hostIpInput.setText(lastWifiIp)
             hostIpInput.isEnabled = true
             statusText.text = "Mode: Wi-Fi (Local Network)"
         }
 
         cableModeBtn.setOnClickListener {
-            cableModeBtn.setBackgroundColor(Color.parseColor("#2563EB"))
-            cableModeBtn.setTextColor(Color.WHITE)
-            wifiModeBtn.setBackgroundColor(Color.parseColor("#27272A"))
-            wifiModeBtn.setTextColor(Color.parseColor("#AAAAAA"))
+            cableModeBtn.setBackgroundColor(Color.parseColor("#E0E0E0"))
+            cableModeBtn.setTextColor(Color.parseColor("#121212"))
+            wifiModeBtn.setBackgroundColor(Color.parseColor("#1C1C1C"))
+            wifiModeBtn.setTextColor(Color.parseColor("#888888"))
             val current = hostIpInput.text.toString().trim()
             if (current != "127.0.0.1" && current.isNotEmpty()) {
                 lastWifiIp = current
@@ -189,7 +189,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                 val targetIp = if (ip.isNotEmpty()) ip else "192.168.0.89"
                 statusText.text = "Connecting to $targetIp..."
                 headerPill.text = "CONNECTING"
-                headerPill.setTextColor(Color.parseColor("#F59E0B"))
+                headerPill.setTextColor(Color.parseColor("#E0E0E0"))
                 transport?.connectTcp(targetIp, 28443, screenWidth, screenHeight, screenDpi, refreshRate)
             } else {
                 transport?.disconnect()
@@ -213,10 +213,10 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     }
 
     private fun selectTab(tabIndex: Int) {
-        val activeBg = Color.parseColor("#2563EB")
-        val inactiveBg = Color.parseColor("#27272A")
-        val activeText = Color.WHITE
-        val inactiveText = Color.parseColor("#A1A1AA")
+        val activeBg = Color.parseColor("#E0E0E0")
+        val inactiveBg = Color.parseColor("#1C1C1C")
+        val activeText = Color.parseColor("#121212")
+        val inactiveText = Color.parseColor("#888888")
 
         // Tab buttons styling
         tabConnectBtn.setBackgroundColor(if (tabIndex == 0) activeBg else inactiveBg)
@@ -263,7 +263,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                     statsOverlay.text = "Stream: ${streamWidth}x${streamHeight} @ ${fps}fps"
                     connectButton.text = "Disconnect"
                     headerPill.text = "LIVE STREAM"
-                    headerPill.setTextColor(Color.parseColor("#10B981"))
+                    headerPill.setTextColor(Color.parseColor("#E0E0E0"))
 
                     // Start hardware video decoder
                     decoder = UltraVideoDecoder(surfaceView.holder.surface, streamWidth, streamHeight)
@@ -309,7 +309,7 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         overlayLayout.visibility = View.VISIBLE
         statsOverlay.visibility = View.GONE
         headerPill.text = "STANDBY"
-        headerPill.setTextColor(Color.parseColor("#38BDF8"))
+        headerPill.setTextColor(Color.parseColor("#E0E0E0"))
         statusText.text = reason
         connectButton.text = "Connect"
         decoder?.stop()

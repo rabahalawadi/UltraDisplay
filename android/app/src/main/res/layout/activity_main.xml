@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121214">
+    android:background="#121212">
 
     <!-- Zero-latency hardware video surface (fullscreen canvas for drawing) -->
     <SurfaceView
@@ -15,9 +15,9 @@
     <!-- Visual Pointer Crosshair (follows Huion pen in real-time) -->
     <View
         android:id="@+id/cursorIndicator"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:background="@android:drawable/presence_online"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:background="#E0E0E0"
         android:visibility="gone" />
 
     <!-- Full-Screen Modern Dashboard Overlay -->
@@ -26,12 +26,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:background="#121214"
+        android:background="#121212"
         android:clickable="true"
         android:focusable="true"
         android:elevation="10dp">
 
-        <!-- Top Header Bar -->
+        <!-- Top Header Bar (#181818) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -41,7 +41,7 @@
             android:paddingTop="16dp"
             android:paddingBottom="12dp"
             android:gravity="center_vertical"
-            android:background="#18181B">
+            android:background="#181818">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -53,16 +53,18 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="UltraDisplay"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#E0E0E0"
                     android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:textStyle="bold"
+                    android:fontFamily="@font/cairo" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="High-Performance Virtual Tablet Display"
-                    android:textColor="#A1A1AA"
-                    android:textSize="11sp" />
+                    android:textColor="#888888"
+                    android:textSize="11sp"
+                    android:fontFamily="@font/cairo" />
             </LinearLayout>
 
             <TextView
@@ -70,10 +72,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="STANDBY"
-                android:textColor="#38BDF8"
+                android:textColor="#E0E0E0"
                 android:textSize="11sp"
                 android:textStyle="bold"
-                android:background="#27272A"
+                android:fontFamily="@font/cairo"
+                android:background="#1E1E1E"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
                 android:paddingTop="6dp"
@@ -89,7 +92,7 @@
             android:paddingEnd="24dp"
             android:paddingTop="12dp"
             android:paddingBottom="12dp"
-            android:background="#18181B">
+            android:background="#181818">
 
             <Button
                 android:id="@+id/tabConnectBtn"
@@ -97,10 +100,11 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:text="Connect"
-                android:textColor="#FFFFFF"
+                android:textColor="#121212"
                 android:textSize="13sp"
                 android:textStyle="bold"
-                android:background="#2563EB"
+                android:fontFamily="@font/cairo"
+                android:background="#E0E0E0"
                 android:stateListAnimator="@null"
                 android:layout_marginEnd="6dp" />
 
@@ -110,9 +114,10 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:text="Settings"
-                android:textColor="#A1A1AA"
+                android:textColor="#888888"
                 android:textSize="13sp"
-                android:background="#27272A"
+                android:fontFamily="@font/cairo"
+                android:background="#1C1C1C"
                 android:stateListAnimator="@null"
                 android:layout_marginEnd="6dp" />
 
@@ -122,9 +127,10 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:text="About Us"
-                android:textColor="#A1A1AA"
+                android:textColor="#888888"
                 android:textSize="13sp"
-                android:background="#27272A"
+                android:fontFamily="@font/cairo"
+                android:background="#1C1C1C"
                 android:stateListAnimator="@null" />
         </LinearLayout>
 
@@ -153,9 +159,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="CONNECTION MODE"
-                        android:textColor="#71717A"
+                        android:textColor="#888888"
                         android:textSize="11sp"
                         android:textStyle="bold"
+                        android:fontFamily="@font/cairo"
                         android:layout_marginBottom="8dp" />
 
                     <LinearLayout
@@ -170,9 +177,11 @@
                             android:layout_height="42dp"
                             android:layout_weight="1"
                             android:text="Wi-Fi Mode"
-                            android:textColor="#FFFFFF"
+                            android:textColor="#121212"
                             android:textSize="13sp"
-                            android:background="#2563EB"
+                            android:textStyle="bold"
+                            android:fontFamily="@font/cairo"
+                            android:background="#E0E0E0"
                             android:stateListAnimator="@null"
                             android:layout_marginEnd="8dp" />
 
@@ -182,18 +191,19 @@
                             android:layout_height="42dp"
                             android:layout_weight="1"
                             android:text="USB Cable Mode"
-                            android:textColor="#A1A1AA"
+                            android:textColor="#888888"
                             android:textSize="13sp"
-                            android:background="#27272A"
+                            android:fontFamily="@font/cairo"
+                            android:background="#1C1C1C"
                             android:stateListAnimator="@null" />
                     </LinearLayout>
 
-                    <!-- Connection Card -->
+                    <!-- Connection Card (#1C1C1C) -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:background="#1E1E24"
+                        android:background="#1C1C1C"
                         android:padding="20dp"
                         android:layout_marginBottom="16dp">
 
@@ -202,17 +212,19 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Mode: Wi-Fi (Local Network)"
-                            android:textColor="#38BDF8"
+                            android:textColor="#E0E0E0"
                             android:textSize="13sp"
+                            android:fontFamily="@font/cairo"
                             android:layout_marginBottom="12dp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="HOST PC ADDRESS"
-                            android:textColor="#A1A1AA"
+                            android:textColor="#888888"
                             android:textSize="10sp"
                             android:textStyle="bold"
+                            android:fontFamily="@font/cairo"
                             android:layout_marginBottom="6dp" />
 
                         <EditText
@@ -221,9 +233,10 @@
                             android:layout_height="48dp"
                             android:text="192.168.0.89"
                             android:hint="PC IP Address (e.g. 192.168.0.89)"
-                            android:textColor="#FFFFFF"
-                            android:textColorHint="#52525B"
-                            android:background="#27272A"
+                            android:textColor="#E0E0E0"
+                            android:textColorHint="#555555"
+                            android:background="#141414"
+                            android:fontFamily="@font/cairo"
                             android:paddingStart="14dp"
                             android:paddingEnd="14dp"
                             android:textSize="15sp"
@@ -235,8 +248,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="48dp"
                             android:text="Connect to Host PC"
-                            android:textColor="#FFFFFF"
-                            android:background="#10B981"
+                            android:textColor="#121212"
+                            android:background="#E0E0E0"
+                            android:fontFamily="@font/cairo"
                             android:stateListAnimator="@null"
                             android:textSize="15sp"
                             android:textStyle="bold" />
@@ -247,16 +261,17 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:background="#18181B"
+                        android:background="#181818"
                         android:padding="16dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="INPUT HARDWARE STATUS"
-                            android:textColor="#71717A"
+                            android:textColor="#888888"
                             android:textSize="10sp"
                             android:textStyle="bold"
+                            android:fontFamily="@font/cairo"
                             android:layout_marginBottom="6dp" />
 
                         <TextView
@@ -264,8 +279,9 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Stylus Digitizer: Ready (Huion / Active Stylus supported)\nWindows Ink Injection: 8192 Pressure Levels &amp; Tilt"
-                            android:textColor="#A1A1AA"
+                            android:textColor="#E0E0E0"
                             android:textSize="12sp"
+                            android:fontFamily="@font/cairo"
                             android:lineSpacingExtra="4dp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -282,16 +298,17 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="DISPLAY &amp; STREAMING"
-                        android:textColor="#71717A"
+                        android:textColor="#888888"
                         android:textSize="11sp"
                         android:textStyle="bold"
+                        android:fontFamily="@font/cairo"
                         android:layout_marginBottom="8dp" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:background="#1E1E24"
+                        android:background="#1C1C1C"
                         android:padding="16dp"
                         android:layout_marginBottom="16dp">
 
@@ -300,8 +317,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Ultra 120 FPS High Refresh Rate"
-                            android:textColor="#FFFFFF"
+                            android:textColor="#E0E0E0"
                             android:textSize="14sp"
+                            android:fontFamily="@font/cairo"
                             android:checked="true"
                             android:layout_marginBottom="12dp" />
 
@@ -310,8 +328,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Keep Screen Always On"
-                            android:textColor="#FFFFFF"
+                            android:textColor="#E0E0E0"
                             android:textSize="14sp"
+                            android:fontFamily="@font/cairo"
                             android:checked="true" />
                     </LinearLayout>
 
@@ -319,16 +338,17 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="STYLUS &amp; DIAGNOSTICS"
-                        android:textColor="#71717A"
+                        android:textColor="#888888"
                         android:textSize="11sp"
                         android:textStyle="bold"
+                        android:fontFamily="@font/cairo"
                         android:layout_marginBottom="8dp" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:background="#1E1E24"
+                        android:background="#1C1C1C"
                         android:padding="16dp">
 
                         <Switch
@@ -336,8 +356,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Show Live Coordinates Debug Box"
-                            android:textColor="#FFFFFF"
+                            android:textColor="#E0E0E0"
                             android:textSize="14sp"
+                            android:fontFamily="@font/cairo"
                             android:checked="true"
                             android:layout_marginBottom="12dp" />
 
@@ -346,8 +367,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:text="Show Visual Pointer Crosshair Dot"
-                            android:textColor="#FFFFFF"
+                            android:textColor="#E0E0E0"
                             android:textSize="14sp"
+                            android:fontFamily="@font/cairo"
                             android:checked="true" />
                     </LinearLayout>
                 </LinearLayout>
@@ -364,7 +386,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:background="#1E1E24"
+                        android:background="#1C1C1C"
                         android:padding="20dp"
                         android:layout_marginBottom="16dp">
 
@@ -372,25 +394,28 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="UltraDisplay v2.0"
-                            android:textColor="#38BDF8"
+                            android:textColor="#E0E0E0"
                             android:textSize="20sp"
                             android:textStyle="bold"
+                            android:fontFamily="@font/cairo"
                             android:layout_marginBottom="4dp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Created by Rabah Alawadi"
-                            android:textColor="#FFFFFF"
+                            android:textColor="#888888"
                             android:textSize="14sp"
+                            android:fontFamily="@font/cairo"
                             android:layout_marginBottom="12dp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="UltraDisplay turns your Android phone or tablet into a high-precision, zero-latency graphics drawing display for Windows.\n\nOptimized for Krita, Photoshop, Clip Studio, Illustrator, and OneNote with native Windows Ink pressure and tilt."
-                            android:textColor="#A1A1AA"
+                            android:textColor="#A0A0A0"
                             android:textSize="13sp"
+                            android:fontFamily="@font/cairo"
                             android:lineSpacingExtra="4dp"
                             android:layout_marginBottom="16dp" />
 
@@ -399,8 +424,9 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="GitHub: github.com/rabahalawadi/UltraDisplay"
-                            android:textColor="#38BDF8"
+                            android:textColor="#E0E0E0"
                             android:textSize="13sp"
+                            android:fontFamily="@font/cairo"
                             android:textStyle="bold" />
                     </LinearLayout>
 
@@ -408,24 +434,26 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:background="#18181B"
+                        android:background="#181818"
                         android:padding="16dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="KEY TECHNOLOGIES"
-                            android:textColor="#71717A"
+                            android:textColor="#888888"
                             android:textSize="10sp"
                             android:textStyle="bold"
+                            android:fontFamily="@font/cairo"
                             android:layout_marginBottom="6dp" />
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="• Pure Windows Ink Synthetic Pointer (InjectSyntheticPointerInput)\n• DXGI Desktop Duplication &amp; Hardware Media Foundation H.264\n• High-precision 120 FPS / 25 Mbps streaming engine\n• Native Huion &amp; S-Pen OTG Digitizer support"
-                            android:textColor="#A1A1AA"
+                            android:textColor="#A0A0A0"
                             android:textSize="12sp"
+                            android:fontFamily="@font/cairo"
                             android:lineSpacingExtra="3dp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -441,11 +469,11 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
         android:layout_margin="10dp"
-        android:background="#CC111111"
+        android:background="#DD121212"
         android:padding="10dp"
-        android:textColor="#00FF66"
+        android:textColor="#E0E0E0"
         android:textSize="11sp"
-        android:fontFamily="monospace"
+        android:fontFamily="@font/cairo"
         android:elevation="12dp"
         android:text="[HUION DEBUG] Move pen over tablet to detect input..." />
 
@@ -456,10 +484,11 @@
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
         android:layout_margin="10dp"
-        android:background="#CC000000"
+        android:background="#DD121212"
         android:padding="8dp"
-        android:textColor="#38BDF8"
+        android:textColor="#E0E0E0"
         android:textSize="12sp"
+        android:fontFamily="@font/cairo"
         android:elevation="12dp"
         android:text="Status: Ready"
         android:visibility="gone" />

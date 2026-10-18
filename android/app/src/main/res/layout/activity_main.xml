@@ -52,7 +52,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="⚡ UltraDisplay"
+                    android:text="UltraDisplay"
                     android:textColor="#FFFFFF"
                     android:textSize="20sp"
                     android:textStyle="bold" />
@@ -74,10 +74,10 @@
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:background="#27272A"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:paddingTop="5dp"
-                android:paddingBottom="5dp" />
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp" />
         </LinearLayout>
 
         <!-- Segmented Tab Navigation: [ Connect ] [ Settings ] [ About Us ] -->
@@ -96,11 +96,12 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
-                android:text="🔗 Connect"
+                android:text="Connect"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp"
                 android:textStyle="bold"
                 android:background="#2563EB"
+                android:stateListAnimator="@null"
                 android:layout_marginEnd="6dp" />
 
             <Button
@@ -108,10 +109,11 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
-                android:text="⚙️ Settings"
+                android:text="Settings"
                 android:textColor="#A1A1AA"
                 android:textSize="13sp"
                 android:background="#27272A"
+                android:stateListAnimator="@null"
                 android:layout_marginEnd="6dp" />
 
             <Button
@@ -119,10 +121,11 @@
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"
-                android:text="ℹ️ About Us"
+                android:text="About Us"
                 android:textColor="#A1A1AA"
                 android:textSize="13sp"
-                android:background="#27272A" />
+                android:background="#27272A"
+                android:stateListAnimator="@null" />
         </LinearLayout>
 
         <!-- Main Content Area with ScrollView -->
@@ -166,10 +169,11 @@
                             android:layout_width="0dp"
                             android:layout_height="42dp"
                             android:layout_weight="1"
-                            android:text="🌐 Wi-Fi Mode"
+                            android:text="Wi-Fi Mode"
                             android:textColor="#FFFFFF"
                             android:textSize="13sp"
                             android:background="#2563EB"
+                            android:stateListAnimator="@null"
                             android:layout_marginEnd="8dp" />
 
                         <Button
@@ -177,10 +181,11 @@
                             android:layout_width="0dp"
                             android:layout_height="42dp"
                             android:layout_weight="1"
-                            android:text="⚡ USB Cable Mode"
+                            android:text="USB Cable Mode"
                             android:textColor="#A1A1AA"
                             android:textSize="13sp"
-                            android:background="#27272A" />
+                            android:background="#27272A"
+                            android:stateListAnimator="@null" />
                     </LinearLayout>
 
                     <!-- Connection Card -->
@@ -232,6 +237,7 @@
                             android:text="Connect to Host PC"
                             android:textColor="#FFFFFF"
                             android:background="#10B981"
+                            android:stateListAnimator="@null"
                             android:textSize="15sp"
                             android:textStyle="bold" />
                     </LinearLayout>
@@ -257,7 +263,7 @@
                             android:id="@+id/tabletStatusInfo"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="✔ Stylus Digitizer: Ready (Huion / Active Stylus supported)\n✔ Windows Ink Injection: 8192 Pressure Levels &amp; Tilt"
+                            android:text="Stylus Digitizer: Ready (Huion / Active Stylus supported)\nWindows Ink Injection: 8192 Pressure Levels &amp; Tilt"
                             android:textColor="#A1A1AA"
                             android:textSize="12sp"
                             android:lineSpacingExtra="4dp" />
@@ -392,7 +398,7 @@
                             android:id="@+id/githubLink"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="🌐 GitHub: github.com/rabahalawadi/UltraDisplay"
+                            android:text="GitHub: github.com/rabahalawadi/UltraDisplay"
                             android:textColor="#38BDF8"
                             android:textSize="13sp"
                             android:textStyle="bold" />

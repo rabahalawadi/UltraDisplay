@@ -3,9 +3,7 @@
 #include <codecapi.h>
 #include <wmcodecdsp.h>
 
-#ifndef MF_LOW_LATENCY
-static const GUID MF_LOW_LATENCY = { 0x9c27891a, 0xed89, 0x405f, { 0x81, 0x24, 0x56, 0x98, 0xba, 0x05, 0x76, 0x97 } };
-#endif
+static const GUID GUID_MF_LOW_LATENCY = { 0x9c27891a, 0xed7a, 0x40e1, { 0x88, 0xe8, 0xb2, 0x27, 0x27, 0xa0, 0x24, 0xee } };
 
 #pragma comment(lib, "mfplat.lib")
 #pragma comment(lib, "mfuuid.lib")
@@ -89,7 +87,7 @@ bool VideoEncoder::Initialize(ID3D11Device* pDevice, int width, int height, int 
     IMFAttributes* pAttributes = nullptr;
     if (SUCCEEDED(m_pTransform->GetAttributes(&pAttributes))) {
         pAttributes->SetUINT32(MF_TRANSFORM_ASYNC_UNLOCK, TRUE);
-        pAttributes->SetUINT32(MF_LOW_LATENCY, TRUE);
+        pAttributes->SetUINT32(GUID_MF_LOW_LATENCY, TRUE);
         pAttributes->Release();
     }
 

@@ -20,6 +20,7 @@ public:
     bool InjectTouch(const UDisTouchEvent& ev);
 
     void UpdateTargetBounds(int left, int top, int width, int height);
+    bool IsWindowsInkActive() const { return m_hSyntheticPen != nullptr; }
 
 private:
     HANDLE m_hSyntheticPen;

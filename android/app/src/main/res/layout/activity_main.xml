@@ -41,20 +41,51 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginBottom="16dp" />
 
+        <!-- Connection Mode Selector: [ Wi-Fi ] [ USB Cable ] -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="14dp">
+
+            <Button
+                android:id="@+id/wifiModeBtn"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:text="🌐 Wi-Fi"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:background="#2563EB"
+                android:layout_marginEnd="6dp" />
+
+            <Button
+                android:id="@+id/cableModeBtn"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:text="⚡ USB Cable"
+                android:textColor="#AAAAAA"
+                android:textSize="13sp"
+                android:background="#27272A"
+                android:layout_marginStart="6dp" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/statusText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Searching for PC on Wi-Fi or USB..."
+            android:text="Mode: Wi-Fi (Local Network)"
             android:textColor="#AAAAAA"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:layout_marginBottom="12dp" />
 
         <EditText
             android:id="@+id/hostIpInput"
             android:layout_width="260dp"
             android:layout_height="wrap_content"
-            android:hint="PC IP (e.g. 192.168.0.89)"
+            android:text="192.168.0.89"
+            android:hint="PC IP Address"
             android:textColor="#FFFFFF"
             android:textColorHint="#666666"
             android:background="#333333"

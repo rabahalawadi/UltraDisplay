@@ -75,13 +75,40 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
         setupTransport()
 
+        val wifiModeBtn: Button = findViewById(R.id.wifiModeBtn)
+        val cableModeBtn: Button = findViewById(R.id.cableModeBtn)
+        var lastWifiIp = "192.168.0.89"
+
+        wifiModeBtn.setOnClickListener {
+            wifiModeBtn.setBackgroundColor(0xFF2563EB.toInt())
+            wifiModeBtn.setTextColor(0xFFFFFFFF.toInt())
+            cableModeBtn.setBackgroundColor(0xFF27272A.toInt())
+            cableModeBtn.setTextColor(0xFFAAAAAA.toInt())
+            hostIpInput.setText(lastWifiIp)
+            hostIpInput.isEnabled = true
+            statusText.text = "Mode: Wi-Fi (Local Network)"
+        }
+
+        cableModeBtn.setOnClickListener {
+            cableModeBtn.setBackgroundColor(0xFF2563EB.toInt())
+            cableModeBtn.setTextColor(0xFFFFFFFF.toInt())
+            wifiModeBtn.setBackgroundColor(0xFF27272A.toInt())
+            wifiModeBtn.setTextColor(0xFFAAAAAA.toInt())
+            val current = hostIpInput.text.toString().trim()
+            if (current != "127.0.0.1" && current.isNotEmpty()) {
+                lastWifiIp = current
+            }
+            hostIpInput.setText("127.0.0.1")
+            hostIpInput.isEnabled = false
+            statusText.text = "Mode: USB Cable (Direct Tunnel via 127.0.0.1)"
+        }
+
         connectButton.setOnClickListener {
             if (!isConnected) {
                 val ip = hostIpInput.text.toString().trim()
-                if (ip.isNotEmpty()) {
-                    statusText.text = "Connecting to $ip..."
-                    transport?.connectTcp(ip, 28443, screenWidth, screenHeight, screenDpi, refreshRate)
-                }
+                val targetIp = if (ip.isNotEmpty()) ip else "192.168.0.89"
+                statusText.text = "Connecting to $targetIp..."
+                transport?.connectTcp(targetIp, 28443, screenWidth, screenHeight, screenDpi, refreshRate)
             } else {
                 transport?.disconnect()
                 onDisconnectedUI("Disconnected by user")
@@ -91,8 +118,11 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         // Auto-discover host on local network
         transport?.discoverHost { hostIp, hostname, port ->
             runOnUiThread {
-                hostIpInput.setText(hostIp)
-                statusText.text = "Found PC: $hostname ($hostIp)"
+                lastWifiIp = hostIp
+                if (hostIpInput.text.toString() != "127.0.0.1") {
+                    hostIpInput.setText(hostIp)
+                    statusText.text = "Found PC: $hostname ($hostIp)"
+                }
             }
         }
 

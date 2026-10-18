@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Zero-latency hardware video surface -->
+    <SurfaceView
+        android:id="@+id/displaySurface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+    <!-- Overlay HUD: Connection and Diagnostics -->
+    <LinearLayout
+        android:id="@+id/overlayLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:background="#DD1E1E1E"
+        android:padding="24dp"
+        android:elevation="8dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="UltraDisplay"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Searching for PC on Wi-Fi or USB..."
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"
+            android:layout_marginBottom="12dp" />
+
+        <EditText
+            android:id="@+id/hostIpInput"
+            android:layout_width="260dp"
+            android:layout_height="wrap_content"
+            android:hint="PC IP (e.g. 192.168.1.100)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#666666"
+            android:background="#333333"
+            android:padding="10dp"
+            android:textSize="15sp"
+            android:singleLine="true"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/connectButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Connect"
+            android:textColor="#FFFFFF"
+            android:background="#007ACC"
+            android:textSize="16sp" />
+    </LinearLayout>
+
+    <!-- Tiny status pill in corner during streaming -->
+    <TextView
+        android:id="@+id/statsOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="12dp"
+        android:background="#88000000"
+        android:padding="6dp"
+        android:textColor="#00FF00"
+        android:textSize="11sp"
+        android:text="S-Pen: Ready | 60 FPS"
+        android:visibility="gone" />
+
+</FrameLayout>

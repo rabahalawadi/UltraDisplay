@@ -1,0 +1,21 @@
+# Temporary & Toolchain directories
+jdk-17/
+temp_gradle/
+scratch/
+.gradle/
+**/build/
+local.properties
+
+# IDE & OS
+.idea/
+*.iml
+.vscode/
+Thumbs.db
+[Dd]esktop.ini
+
+# C++ intermediate build artifacts
+*.o
+*.obj
+*.res
+*.d
+*.log

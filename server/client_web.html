@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>UltraDisplay Web Client (S-Pen / Graphics Tablet)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        #canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            touch-action: none;
+            background: #000;
+            cursor: crosshair;
+        }
+        #overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(24, 24, 27, 0.96);
+            padding: 28px;
+            border-radius: 14px;
+            color: #fff;
+            text-align: center;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.9);
+            z-index: 100;
+            min-width: 320px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        #overlay h2 {
+            margin-bottom: 8px;
+            font-size: 22px;
+            color: #38bdf8;
+            font-weight: 700;
+        }
+        #overlay p {
+            font-size: 13px;
+            color: #94a3b8;
+            margin-bottom: 16px;
+        }
+        #ipInput {
+            width: 100%;
+            padding: 12px 14px;
+            margin-bottom: 14px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #0f172a;
+            color: #f8fafc;
+            font-size: 15px;
+            outline: none;
+        }
+        #ipInput:focus {
+            border-color: #38bdf8;
+        }
+        #btnConnect {
+            width: 100%;
+            padding: 13px;
+            background: #0284c7;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #btnConnect:active {
+            background: #0369a1;
+        }
+        #toolbar {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            display: none;
+            gap: 8px;
+            z-index: 50;
+        }
+        .btn-tool {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.15);
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-tool:active {
+            background: #0284c7;
+        }
+        #hud {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            color: #38bdf8;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-family: monospace;
+            pointer-events: none;
+            display: none;
+            border: 1px solid rgba(255,255,255,0.15);
+            z-index: 50;
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay">
+        <h2>UltraDisplay</h2>
+        <p>S-Pen & Graphics Tablet Digitizer</p>
+        <input type="text" id="ipInput" placeholder="Server IP (e.g. 192.168.0.89)">
+        <button id="btnConnect">Connect Display</button>
+    </div>
+
+    <div id="toolbar">
+        <button class="btn-tool" id="btnCurve">Curve: Medium</button>
+        <button class="btn-tool" id="btnScale">Mode: Fill Screen</button>
+        <button class="btn-tool" id="btnFullscreen">Fullscreen</button>
+    </div>
+
+    <div id="hud">Stylus: Ready | Latency: 2ms</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+        const overlay = document.getElementById('overlay');
+        const ipInput = document.getElementById('ipInput');
+        const btnConnect = document.getElementById('btnConnect');
+        const toolbar = document.getElementById('toolbar');
+        const hud = document.getElementById('hud');
+        const btnScale = document.getElementById('btnScale');
+        const btnCurve = document.getElementById('btnCurve');
+        const btnFullscreen = document.getElementById('btnFullscreen');
+
+        let ws = null;
+        let isConnected = false;
+        let scaleMode = 'fill'; // 'fill' or 'fit'
+        let curveMode = 'medium'; // 'soft', 'medium', 'firm'
+        let streamWidth = 1920;
+        let streamHeight = 1080;
+
+        function updateCanvasDimensions() {
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = Math.round(window.innerWidth * dpr);
+            canvas.height = Math.round(window.innerHeight * dpr);
+        }
+        window.addEventListener('resize', updateCanvasDimensions);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateCanvasDimensions, 200);
+        });
+        updateCanvasDimensions();
+
+        if (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            ipInput.value = location.hostname;
+        }
+
+        btnConnect.addEventListener('click', () => {
+            const ip = ipInput.value.trim() || '127.0.0.1';
+            requestFullscreenSafe();
+            connect(ip);
+        });
+
+        btnFullscreen.addEventListener('click', requestFullscreenSafe);
+
+        btnScale.addEventListener('click', () => {
+            if (scaleMode === 'fill') {
+                scaleMode = 'fit';
+                btnScale.textContent = 'Mode: Aspect Ratio';
+            } else {
+                scaleMode = 'fill';
+                btnScale.textContent = 'Mode: Fill Screen';
+            }
+        });
+
+        btnCurve.addEventListener('click', () => {
+            if (curveMode === 'medium') {
+                curveMode = 'firm';
+                btnCurve.textContent = 'Curve: Firm';
+            } else if (curveMode === 'firm') {
+                curveMode = 'soft';
+                btnCurve.textContent = 'Curve: Soft';
+            } else {
+                curveMode = 'medium';
+                btnCurve.textContent = 'Curve: Medium';
+            }
+        });
+
+        function requestFullscreenSafe() {
+            const el = document.documentElement;
+            if (el.requestFullscreen) {
+                el.requestFullscreen().catch(() => {});
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
+            }
+        }
+
+        window.addEventListener('contextmenu', (e) => e.preventDefault(), { passive: false });
+        window.addEventListener('touchstart', (e) => { if (isConnected) e.preventDefault(); }, { passive: false });
+        window.addEventListener('touchmove', (e) => { if (isConnected) e.preventDefault(); }, { passive: false });
+
+        function connect(host) {
+            btnConnect.textContent = 'Connecting...';
+            ws = new WebSocket(`ws://${host}:28443/ws`);
+            ws.binaryType = 'arraybuffer';
+
+            ws.onopen = () => {
+                isConnected = true;
+                overlay.style.display = 'none';
+                toolbar.style.display = 'flex';
+                hud.style.display = 'block';
+
+                sendHandshake();
+            };
+
+            ws.onclose = () => {
+                isConnected = false;
+                overlay.style.display = 'block';
+                toolbar.style.display = 'none';
+                hud.style.display = 'none';
+                btnConnect.textContent = 'Connect Display';
+            };
+
+            ws.onerror = (e) => {
+                console.error('WebSocket Error', e);
+                btnConnect.textContent = 'Retry Connection';
+            };
+
+            let videoDecoder = null;
+            if ('VideoDecoder' in window) {
+                videoDecoder = new VideoDecoder({
+                    output: (frame) => {
+                        renderVideoFrame(frame);
+                        frame.close();
+                    },
+                    error: (err) => console.warn('Decoder error', err)
+                });
+                videoDecoder.configure({
+                    codec: 'avc1.640028',
+                    optimizeForLatency: true
+                });
+            }
+
+            function renderVideoFrame(frame) {
+                streamWidth = frame.displayWidth || 1920;
+                streamHeight = frame.displayHeight || 1080;
+
+                if (scaleMode === 'fill') {
+                    ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                } else {
+                    const canvasAspect = canvas.width / canvas.height;
+                    const frameAspect = streamWidth / streamHeight;
+                    let dw = canvas.width;
+                    let dh = canvas.height;
+                    let dx = 0;
+                    let dy = 0;
+
+                    if (canvasAspect > frameAspect) {
+                        dw = canvas.height * frameAspect;
+                        dx = (canvas.width - dw) / 2;
+                    } else {
+                        dh = canvas.width / frameAspect;
+                        dy = (canvas.height - dh) / 2;
+                    }
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(frame, dx, dy, dw, dh);
+                }
+            }
+
+            ws.onmessage = (e) => {
+                if (e.data instanceof ArrayBuffer && videoDecoder && videoDecoder.state === 'configured') {
+                    const u8 = new Uint8Array(e.data);
+                    let isKey = false;
+                    for (let i = 0; i < Math.min(u8.length - 4, 128); i++) {
+                        if (u8[i] === 0 && u8[i+1] === 0) {
+                            if (u8[i+2] === 1) {
+                                const nalType = u8[i+3] & 0x1F;
+                                if (nalType === 5 || nalType === 7) { isKey = true; break; }
+                            } else if (u8[i+2] === 0 && u8[i+3] === 1) {
+                                const nalType = u8[i+4] & 0x1F;
+                                if (nalType === 5 || nalType === 7) { isKey = true; break; }
+                            }
+                        }
+                    }
+                    try {
+                        const chunk = new EncodedVideoChunk({
+                            type: isKey ? 'key' : 'delta',
+                            timestamp: performance.now() * 1000,
+                            data: e.data
+                        });
+                        videoDecoder.decode(chunk);
+                    } catch (err) {}
+                }
+            };
+        }
+
+        function sendHandshake() {
+            const buf = new ArrayBuffer(80);
+            const view = new DataView(buf);
+            view.setUint32(0, 0x55444953, true); // MAGIC "UDIS"
+            view.setUint8(4, 0x01); // PKT_HANDSHAKE_REQ
+            view.setUint8(5, 1);    // VERSION
+            view.setUint16(6, 72, true);
+
+            view.setUint16(8, window.innerWidth, true);
+            view.setUint16(10, window.innerHeight, true);
+            view.setUint16(12, 280, true);
+            view.setUint8(14, 60);
+            view.setUint8(15, 1);
+            view.setUint8(16, 1); // hasStylus: 1
+            view.setUint8(17, 10);
+            ws.send(buf);
+        }
+
+        // PointerEvents & MouseEvents: Captures both Stylus and Phone Mouse Cursor
+        function handlePointer(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!isConnected || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+            const rect = canvas.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+
+            // e.clientX / e.clientY captures the phone mouse cursor seamlessly
+            let normX = 0;
+            let normY = 0;
+
+            if (scaleMode === 'fill') {
+                normX = (e.clientX - rect.left) / rect.width;
+                normY = (e.clientY - rect.top) / rect.height;
+            } else {
+                const canvasAspect = rect.width / rect.height;
+                const frameAspect = streamWidth / streamHeight;
+                let dw = rect.width;
+                let dh = rect.height;
+                let dx = 0;
+                let dy = 0;
+
+                if (canvasAspect > frameAspect) {
+                    dw = rect.height * frameAspect;
+                    dx = (rect.width - dw) / 2;
+                } else {
+                    dh = rect.width / frameAspect;
+                    dy = (rect.height - dh) / 2;
+                }
+
+                normX = (e.clientX - rect.left - dx) / dw;
+                normY = (e.clientY - rect.top - dy) / dh;
+            }
+
+            normX = Math.max(0, Math.min(1, normX));
+            normY = Math.max(0, Math.min(1, normY));
+
+            // Hardware pressure normalization (handles 0.0..1.0 float or 0..4095/8192 raw integers)
+            let rawP = 0.0;
+            if (typeof e.pressure === 'number') {
+                if (e.pressure > 1.0) {
+                    rawP = (e.pressure > 4095) ? (e.pressure / 8192.0) : (e.pressure / 4095.0);
+                } else {
+                    rawP = e.pressure;
+                }
+            }
+
+            // Physical tip contact is active ONLY when pressure is genuinely detected (> 0.015) AND buttons > 0
+            // When the pen is in the air hovering: rawP is 0.0, so isContact is FALSE (Pure Hover without click!)
+            const isContact = (rawP > 0.015) && (e.buttons > 0) &&
+                              (e.type !== 'pointerup') && (e.type !== 'mouseup') && (e.type !== 'pointercancel');
+
+            // Apply selected curve
+            let adjustedP = 0.0;
+            if (isContact) {
+                if (curveMode === 'soft') {
+                    adjustedP = Math.pow(rawP, 0.9);
+                } else if (curveMode === 'firm') {
+                    adjustedP = Math.pow(rawP, 1.5);
+                } else {
+                    adjustedP = Math.pow(rawP, 1.2);
+                }
+            }
+            adjustedP = Math.max(0.0, Math.min(1.0, adjustedP));
+            const pressure = Math.round(adjustedP * 4095);
+
+            const tiltX = Math.max(-90, Math.min(90, e.tiltX || 0));
+            const tiltY = Math.max(-90, Math.min(90, e.tiltY || 0));
+            const rotation = Math.round(e.twist || 0);
+
+            // Stylus barrel side button or mouse right button
+            const barrel = (e.buttons & 2) !== 0 || e.button === 2;
+
+            let flags = 0x0001; // INRANGE (Hover)
+            if (isContact) flags |= 0x0002; // INCONTACT (Tip touching surface)
+
+            if (e.type === 'pointerdown' || e.type === 'mousedown') flags |= 0x0004; // DOWN
+            if (e.type === 'pointermove' || e.type === 'pointerrawupdate' || e.type === 'mousemove') flags |= 0x0008; // MOVE
+            if (e.type === 'pointerup' || e.type === 'pointercancel' || e.type === 'mouseup') flags |= 0x0010; // UP
+            if (barrel) flags |= 0x0020; // BARREL BUTTON
+
+            hud.textContent = `Pen: ${isContact ? 'DRAWING' : 'HOVER'} | (${Math.round(normX*1920)}, ${Math.round(normY*1080)}) | P: ${Math.round(adjustedP*100)}%${barrel ? ' | [BARREL]' : ''}`;
+
+            // Pack UDisSPenEvent (28 bytes total)
+            const buf = new ArrayBuffer(28);
+            const v = new DataView(buf);
+            v.setUint32(0, 0x55444953, true); // MAGIC "UDIS"
+            v.setUint8(4, 0x10);              // PKT_INPUT_SPEN
+            v.setUint8(5, 1);                 // VERSION
+            v.setUint16(6, 20, true);         // payloadLen
+
+            v.setUint16(8, flags, true);
+            v.setFloat32(10, normX, true);
+            v.setFloat32(14, normY, true);
+            v.setUint16(18, pressure, true);
+            v.setInt8(20, tiltX);
+            v.setInt8(21, tiltY);
+            v.setInt16(22, rotation, true);
+            v.setUint32(24, Math.round(performance.now()), true);
+
+            ws.send(buf);
+        }
+
+        // Attach listeners across canvas, window, and document for seamless phone mouse & hover tracking
+        const events = ['pointermove', 'pointerdown', 'pointerup', 'pointercancel', 'pointerrawupdate', 'mousemove', 'mousedown', 'mouseup'];
+        events.forEach(name => {
+            window.addEventListener(name, handlePointer, { passive: false });
+            document.addEventListener(name, handlePointer, { passive: false });
+            canvas.addEventListener(name, handlePointer, { passive: false });
+        });
+    </script>
+</body>
+</html>

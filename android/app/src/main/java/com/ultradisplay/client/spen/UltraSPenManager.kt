@@ -268,43 +268,48 @@ class UltraSPenManager(
     }
 
     private fun handleMultitouch(event: MotionEvent) {
-        val width = surfaceView.width.toFloat().coerceAtLeast(1f)
-        val height = surfaceView.height.toFloat().coerceAtLeast(1f)
-        val pointerCount = event.pointerCount.coerceAtMost(10)
+        try {
+            val width = surfaceView.width.toFloat().coerceAtLeast(1f)
+            val height = surfaceView.height.toFloat().coerceAtLeast(1f)
+            val pointerCount = event.pointerCount.coerceAtMost(10)
 
-        val buf = ByteBuffer.allocate(8 + 105).order(ByteOrder.LITTLE_ENDIAN)
-        buf.putInt(0x55444953) // MAGIC
-        buf.put(PKT_INPUT_TOUCH)
-        buf.put(1) // VERSION
-        buf.putShort(105) // payloadLen
+            // Header (8 bytes) + Count (1) + 10 * Contacts (14) + Timestamp (4) = 153 bytes
+            val buf = ByteBuffer.allocate(153).order(ByteOrder.LITTLE_ENDIAN)
+            buf.putInt(0x55444953) // MAGIC
+            buf.put(PKT_INPUT_TOUCH)
+            buf.put(1) // VERSION
+            buf.putShort(145) // payloadLen: 1 + 10 * 14 + 4 = 145 bytes
 
-        buf.put(pointerCount.toByte())
+            buf.put(pointerCount.toByte())
 
-        for (i in 0 until 10) {
-            if (i < pointerCount) {
-                val pointerId = event.getPointerId(i).toByte()
-                val normX = (event.getX(i) / width).coerceIn(0f, 1f)
-                val normY = (event.getY(i) / height).coerceIn(0f, 1f)
-                val size = event.getSize(i)
+            for (i in 0 until 10) {
+                if (i < pointerCount) {
+                    val pointerId = event.getPointerId(i).toByte()
+                    val normX = (event.getX(i) / width).coerceIn(0f, 1f)
+                    val normY = (event.getY(i) / height).coerceIn(0f, 1f)
+                    val size = event.getSize(i)
 
-                val state: Byte = when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> if (event.actionIndex == i) 0 else 1
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (event.actionIndex == i) 2 else 1
-                    else -> 1 // MOVE
+                    val state: Byte = when (event.actionMasked) {
+                        MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> if (event.actionIndex == i) 0 else 1
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (event.actionIndex == i) 2 else 1
+                        else -> 1 // MOVE
+                    }
+
+                    buf.put(pointerId)
+                    buf.put(state)
+                    buf.putFloat(normX)
+                    buf.putFloat(normY)
+                    buf.putFloat(size)
+                } else {
+                    buf.put(0); buf.put(0); buf.putFloat(0f); buf.putFloat(0f); buf.putFloat(0f)
                 }
-
-                buf.put(pointerId)
-                buf.put(state)
-                buf.putFloat(normX)
-                buf.putFloat(normY)
-                buf.putFloat(size)
-            } else {
-                buf.put(0); buf.put(0); buf.putFloat(0f); buf.putFloat(0f); buf.putFloat(0f)
             }
-        }
 
-        buf.putInt(event.eventTime.toInt())
-        transport?.sendAsync(buf.array())
+            buf.putInt(event.eventTime.toInt())
+            transport?.sendAsync(buf.array())
+        } catch (e: Exception) {
+            android.util.Log.e("UltraSPenManager", "Error in handleMultitouch", e)
+        }
     }
 
     private fun sendSPenPacket(
@@ -318,21 +323,25 @@ class UltraSPenManager(
         timestampMs: Long
     ) {
         val t = transport ?: return
-        val buf = ByteBuffer.allocate(28).order(ByteOrder.LITTLE_ENDIAN)
-        buf.putInt(0x55444953) // MAGIC
-        buf.put(PKT_INPUT_SPEN)
-        buf.put(1) // VERSION
-        buf.putShort(20) // payloadLen
+        try {
+            val buf = ByteBuffer.allocate(28).order(ByteOrder.LITTLE_ENDIAN)
+            buf.putInt(0x55444953) // MAGIC
+            buf.put(PKT_INPUT_SPEN)
+            buf.put(1) // VERSION
+            buf.putShort(20) // payloadLen
 
-        buf.putShort(flags)
-        buf.putFloat(normX)
-        buf.putFloat(normY)
-        buf.putShort(pressure)
-        buf.put(tiltX)
-        buf.put(tiltY)
-        buf.putShort(rotation)
-        buf.putInt(timestampMs.toInt())
+            buf.putShort(flags)
+            buf.putFloat(normX)
+            buf.putFloat(normY)
+            buf.putShort(pressure)
+            buf.put(tiltX)
+            buf.put(tiltY)
+            buf.putShort(rotation)
+            buf.putInt(timestampMs.toInt())
 
-        t.sendAsync(buf.array())
+            t.sendAsync(buf.array())
+        } catch (e: Exception) {
+            android.util.Log.e("UltraSPenManager", "Error in sendSPenPacket", e)
+        }
     }
 }

@@ -23,6 +23,11 @@ class UltraVideoDecoder(
 
     fun start(): Boolean {
         try {
+            if (!surface.isValid) {
+                Log.e(TAG, "Surface is not valid, cannot start decoder")
+                return false
+            }
+
             codec = MediaCodec.createDecoderByType(mimeType)
             val format = MediaFormat.createVideoFormat(mimeType, width, height)
 

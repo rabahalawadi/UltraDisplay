@@ -65,6 +65,7 @@ struct AppState {
 
 static AppState g_app;
 static PrivateFontCollection* g_pPrivateFontCollection = nullptr;
+static HANDLE g_hSingleInstanceMutex = nullptr;
 
 static void InitCairoFont() {
     WCHAR exeDir[MAX_PATH] = {0};
@@ -727,6 +728,10 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
             delete g_pPrivateFontCollection;
             g_pPrivateFontCollection = nullptr;
         }
+        if (g_hSingleInstanceMutex) {
+            CloseHandle(g_hSingleInstanceMutex);
+            g_hSingleInstanceMutex = nullptr;
+        }
         PostQuitMessage(0);
         break;
 
@@ -737,6 +742,22 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lPara
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // 1. Single-Instance Mutex Enforcement
+    g_hSingleInstanceMutex = CreateMutexA(NULL, TRUE, "CanvasX_SingleInstance_Mutex_Host");
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        HWND hExisting = FindWindowA("CanvasXServerGUI", "CanvasX");
+        if (hExisting) {
+            ShowWindow(hExisting, SW_SHOW);
+            ShowWindow(hExisting, SW_RESTORE);
+            SetForegroundWindow(hExisting);
+        }
+        if (g_hSingleInstanceMutex) {
+            CloseHandle(g_hSingleInstanceMutex);
+            g_hSingleInstanceMutex = nullptr;
+        }
+        return 0;
+    }
+
     GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);

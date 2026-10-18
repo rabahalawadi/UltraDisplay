@@ -238,13 +238,18 @@ void UltraDisplayServer::AcceptLoop() {
             m_streamThread = std::thread(&UltraDisplayServer::StreamLoop, this);
             m_inputThread = std::thread(&UltraDisplayServer::InputLoop, this);
 
-            m_streamThread.join();
-            m_inputThread.join();
+            if (m_streamThread.joinable()) m_streamThread.join();
+            if (m_inputThread.joinable()) m_inputThread.join();
         }
 
         m_clientConnected = false;
-        closesocket(m_clientSocket);
-        m_clientSocket = INVALID_SOCKET;
+        if (m_clientSocket != INVALID_SOCKET) {
+            shutdown(m_clientSocket, SD_BOTH);
+            closesocket(m_clientSocket);
+            m_clientSocket = INVALID_SOCKET;
+        }
+        m_capture.Shutdown();
+        m_encoder.Shutdown();
         m_clientProtocol = PROTO_UNKNOWN;
         {
             std::lock_guard<std::mutex> lock(m_stateMutex);
@@ -361,13 +366,16 @@ bool UltraDisplayServer::HandleNativeHandshake() {
     UDisHandshakeReq req;
     if (!RecvAll(&req, sizeof(req))) return false;
 
+    char safeName[65] = {0};
+    memcpy(safeName, req.deviceName, 64);
+
     {
         std::lock_guard<std::mutex> lock(m_stateMutex);
-        m_clientDeviceName = req.deviceName;
+        m_clientDeviceName = safeName;
     }
 
     printf("[Server] Native Client: '%s' (%dx%d, %d DPI, %d Hz, Stylus: %s)\n",
-           req.deviceName, req.clientWidth, req.clientHeight, req.densityDpi,
+           safeName, req.clientWidth, req.clientHeight, req.densityDpi,
            req.refreshRate, req.hasStylus ? "YES" : "NO");
 
     if (!m_capture.Initialize(m_monitorIndex)) return false;
@@ -448,7 +456,7 @@ void UltraDisplayServer::StreamLoop() {
                     hdr.magic = ULTRADISPLAY_MAGIC;
                     hdr.type = PKT_FRAME_DATA;
                     hdr.version = ULTRADISPLAY_VERSION;
-                    hdr.payloadLen = (uint16_t)(sizeof(UDisFrameHeader) + nalBuffer.size());
+                    hdr.payloadLen = (uint16_t)std::min<size_t>(65535, sizeof(UDisFrameHeader) + nalBuffer.size());
 
                     UDisFrameHeader fhdr;
                     fhdr.frameIndex = frameSeq++;
@@ -466,6 +474,11 @@ void UltraDisplayServer::StreamLoop() {
         } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(2));
         }
+    }
+
+    m_clientConnected = false;
+    if (m_clientSocket != INVALID_SOCKET) {
+        shutdown(m_clientSocket, SD_BOTH);
     }
 }
 
@@ -527,6 +540,11 @@ void UltraDisplayServer::InputLoopWebSocket() {
             }
         }
     }
+
+    m_clientConnected = false;
+    if (m_clientSocket != INVALID_SOCKET) {
+        shutdown(m_clientSocket, SD_BOTH);
+    }
 }
 
 void UltraDisplayServer::InputLoopBinary() {
@@ -550,6 +568,11 @@ void UltraDisplayServer::InputLoopBinary() {
                 RecvAll(drain.data(), hdr.payloadLen);
             }
         }
+    }
+
+    m_clientConnected = false;
+    if (m_clientSocket != INVALID_SOCKET) {
+        shutdown(m_clientSocket, SD_BOTH);
     }
 }
 

@@ -19,4 +19,5 @@ Thumbs.db
 *.res
 *.d
 server/UltraDisplayHost.exe
+server/CanvasX_old.exe
 *.log

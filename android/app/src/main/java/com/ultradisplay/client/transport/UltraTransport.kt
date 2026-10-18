@@ -150,40 +150,48 @@ class UltraTransport(
         }
 
         // Receive Loop
-        val headerBuf = ByteArray(8)
-        while (isRunning) {
-            readExact(headerBuf, 8)
-            val hBuf = ByteBuffer.wrap(headerBuf).order(ByteOrder.LITTLE_ENDIAN)
-            val magic = hBuf.int
-            val type = hBuf.get()
-            val version = hBuf.get()
-            val payloadLen = hBuf.short.toInt() and 0xFFFF
+        try {
+            val headerBuf = ByteArray(8)
+            while (isRunning) {
+                readExact(headerBuf, 8)
+                val hBuf = ByteBuffer.wrap(headerBuf).order(ByteOrder.LITTLE_ENDIAN)
+                val magic = hBuf.int
+                val type = hBuf.get()
+                val version = hBuf.get()
+                val payloadLen = hBuf.short.toInt() and 0xFFFF
 
-            if (magic != ULTRADISPLAY_MAGIC) {
-                Log.e(TAG, "Invalid magic 0x${Integer.toHexString(magic)}")
-                break
+                if (magic != ULTRADISPLAY_MAGIC) {
+                    Log.e(TAG, "Invalid magic 0x${Integer.toHexString(magic)}")
+                    break
+                }
+
+                if (type == PKT_FRAME_DATA) {
+                    // Read Frame Header (20 bytes: 4 seq + 8 timestamp + 1 key + 3 reserved + 4 nalSize)
+                    val fhdrBuf = ByteArray(20)
+                    readExact(fhdrBuf, 20)
+                    val fBuf = ByteBuffer.wrap(fhdrBuf).order(ByteOrder.LITTLE_ENDIAN)
+                    val frameIndex = fBuf.int
+                    val timestampUs = fBuf.long
+                    val isKeyframe = fBuf.get() != 0.toByte()
+                    fBuf.position(fBuf.position() + 3) // padding
+                    val nalSize = fBuf.int
+
+                    if (nalSize in 1..8388608) {
+                        // Read NAL payload
+                        val nalData = ByteArray(nalSize)
+                        readExact(nalData, nalSize)
+                        onFrameReceived(nalData, timestampUs, isKeyframe)
+                    } else {
+                        Log.w(TAG, "Invalid nalSize: $nalSize, skipping frame")
+                        break
+                    }
+                } else {
+                    // Skip payload
+                    skipExact(payloadLen)
+                }
             }
-
-            if (type == PKT_FRAME_DATA) {
-                // Read Frame Header (20 bytes: 4 seq + 8 timestamp + 1 key + 3 reserved + 4 nalSize)
-                val fhdrBuf = ByteArray(20)
-                readExact(fhdrBuf, 20)
-                val fBuf = ByteBuffer.wrap(fhdrBuf).order(ByteOrder.LITTLE_ENDIAN)
-                val frameIndex = fBuf.int
-                val timestampUs = fBuf.long
-                val isKeyframe = fBuf.get() != 0.toByte()
-                fBuf.position(fBuf.position() + 3) // padding
-                val nalSize = fBuf.int
-
-                // Read NAL payload
-                val nalData = ByteArray(nalSize)
-                readExact(nalData, nalSize)
-
-                onFrameReceived(nalData, timestampUs, isKeyframe)
-            } else {
-                // Skip payload
-                skipExact(payloadLen)
-            }
+        } catch (e: Exception) {
+            Log.i(TAG, "Transport receive loop ended: ${e.message}")
         }
 
         onDisconnected("Session ended")

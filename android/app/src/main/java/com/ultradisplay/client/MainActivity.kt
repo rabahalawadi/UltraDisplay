@@ -2,8 +2,10 @@ package com.ultradisplay.client
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
 import android.hardware.usb.UsbAccessory
 import android.hardware.usb.UsbManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
@@ -17,6 +19,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.Switch
 import android.widget.TextView
 import com.ultradisplay.client.decoder.UltraVideoDecoder
 import com.ultradisplay.client.spen.UltraSPenManager
@@ -32,6 +35,23 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
     private lateinit var statsOverlay: TextView
     private lateinit var debugOverlay: TextView
     private lateinit var cursorIndicator: View
+    private lateinit var headerPill: TextView
+
+    // Tab Containers
+    private lateinit var connectContainer: LinearLayout
+    private lateinit var settingsContainer: LinearLayout
+    private lateinit var aboutContainer: LinearLayout
+
+    // Tab Buttons
+    private lateinit var tabConnectBtn: Button
+    private lateinit var tabSettingsBtn: Button
+    private lateinit var tabAboutBtn: Button
+
+    // Settings Switches
+    private lateinit var switch120Hz: Switch
+    private lateinit var switchKeepAwake: Switch
+    private lateinit var switchDebugOverlay: Switch
+    private lateinit var switchCursorDot: Switch
 
     private var transport: UltraTransport? = null
     private var decoder: UltraVideoDecoder? = null
@@ -58,6 +78,22 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         statsOverlay = findViewById(R.id.statsOverlay)
         debugOverlay = findViewById(R.id.debugOverlay)
         cursorIndicator = findViewById(R.id.cursorIndicator)
+        headerPill = findViewById(R.id.headerPill)
+
+        connectContainer = findViewById(R.id.connectContainer)
+        settingsContainer = findViewById(R.id.settingsContainer)
+        aboutContainer = findViewById(R.id.aboutContainer)
+
+        tabConnectBtn = findViewById(R.id.tabConnectBtn)
+        tabSettingsBtn = findViewById(R.id.tabSettingsBtn)
+        tabAboutBtn = findViewById(R.id.tabAboutBtn)
+
+        switch120Hz = findViewById(R.id.switch120Hz)
+        switchKeepAwake = findViewById(R.id.switchKeepAwake)
+        switchDebugOverlay = findViewById(R.id.switchDebugOverlay)
+        switchCursorDot = findViewById(R.id.switchCursorDot)
+
+        val githubLink: TextView = findViewById(R.id.githubLink)
 
         surfaceView.holder.addCallback(this)
         surfaceView.isFocusable = true
@@ -68,32 +104,39 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         screenWidth = metrics.widthPixels
         screenHeight = metrics.heightPixels
         screenDpi = metrics.densityDpi
-        refreshRate = windowManager.defaultDisplay.refreshRate.toInt()
+        val displayRefresh = windowManager.defaultDisplay.refreshRate.toInt()
+        refreshRate = if (displayRefresh >= 90) displayRefresh else 120
 
         // Initialize S-Pen & Huion manager immediately so user can debug input before connecting
         spenManager = UltraSPenManager(null, surfaceView, debugOverlay, cursorIndicator)
 
         setupTransport()
 
+        // Tab Navigation
+        tabConnectBtn.setOnClickListener { selectTab(0) }
+        tabSettingsBtn.setOnClickListener { selectTab(1) }
+        tabAboutBtn.setOnClickListener { selectTab(2) }
+
+        // Mode Selector: Wi-Fi vs USB Cable
         val wifiModeBtn: Button = findViewById(R.id.wifiModeBtn)
         val cableModeBtn: Button = findViewById(R.id.cableModeBtn)
         var lastWifiIp = "192.168.0.89"
 
         wifiModeBtn.setOnClickListener {
-            wifiModeBtn.setBackgroundColor(0xFF2563EB.toInt())
-            wifiModeBtn.setTextColor(0xFFFFFFFF.toInt())
-            cableModeBtn.setBackgroundColor(0xFF27272A.toInt())
-            cableModeBtn.setTextColor(0xFFAAAAAA.toInt())
+            wifiModeBtn.setBackgroundColor(Color.parseColor("#2563EB"))
+            wifiModeBtn.setTextColor(Color.WHITE)
+            cableModeBtn.setBackgroundColor(Color.parseColor("#27272A"))
+            cableModeBtn.setTextColor(Color.parseColor("#AAAAAA"))
             hostIpInput.setText(lastWifiIp)
             hostIpInput.isEnabled = true
             statusText.text = "Mode: Wi-Fi (Local Network)"
         }
 
         cableModeBtn.setOnClickListener {
-            cableModeBtn.setBackgroundColor(0xFF2563EB.toInt())
-            cableModeBtn.setTextColor(0xFFFFFFFF.toInt())
-            wifiModeBtn.setBackgroundColor(0xFF27272A.toInt())
-            wifiModeBtn.setTextColor(0xFFAAAAAA.toInt())
+            cableModeBtn.setBackgroundColor(Color.parseColor("#2563EB"))
+            cableModeBtn.setTextColor(Color.WHITE)
+            wifiModeBtn.setBackgroundColor(Color.parseColor("#27272A"))
+            wifiModeBtn.setTextColor(Color.parseColor("#AAAAAA"))
             val current = hostIpInput.text.toString().trim()
             if (current != "127.0.0.1" && current.isNotEmpty()) {
                 lastWifiIp = current
@@ -103,11 +146,50 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
             statusText.text = "Mode: USB Cable (Direct Tunnel via 127.0.0.1)"
         }
 
+        // Settings switches logic
+        switch120Hz.setOnCheckedChangeListener { _, isChecked ->
+            refreshRate = if (isChecked) 120 else 60
+        }
+
+        switchKeepAwake.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
+
+        switchDebugOverlay.setOnCheckedChangeListener { _, isChecked ->
+            debugOverlay.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        switchCursorDot.setOnCheckedChangeListener { _, isChecked ->
+            spenManager?.showCursor = isChecked
+            cursorIndicator.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
+        // About Us GitHub link
+        githubLink.setOnClickListener {
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/rabahalawadi/UltraDisplay"))
+                startActivity(intent)
+            } catch (e: Exception) {
+                // Ignore if browser not found
+            }
+        }
+
+        // Stats pill click toggles overlay dashboard while streaming
+        statsOverlay.setOnClickListener {
+            overlayLayout.visibility = if (overlayLayout.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
+
         connectButton.setOnClickListener {
             if (!isConnected) {
                 val ip = hostIpInput.text.toString().trim()
                 val targetIp = if (ip.isNotEmpty()) ip else "192.168.0.89"
                 statusText.text = "Connecting to $targetIp..."
+                headerPill.text = "CONNECTING"
+                headerPill.setTextColor(Color.parseColor("#F59E0B"))
                 transport?.connectTcp(targetIp, 28443, screenWidth, screenHeight, screenDpi, refreshRate)
             } else {
                 transport?.disconnect()
@@ -128,6 +210,28 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
 
         // Check if launched by USB Accessory attachment
         handleUsbIntent(intent)
+    }
+
+    private fun selectTab(tabIndex: Int) {
+        val activeBg = Color.parseColor("#2563EB")
+        val inactiveBg = Color.parseColor("#27272A")
+        val activeText = Color.WHITE
+        val inactiveText = Color.parseColor("#A1A1AA")
+
+        // Tab buttons styling
+        tabConnectBtn.setBackgroundColor(if (tabIndex == 0) activeBg else inactiveBg)
+        tabConnectBtn.setTextColor(if (tabIndex == 0) activeText else inactiveText)
+
+        tabSettingsBtn.setBackgroundColor(if (tabIndex == 1) activeBg else inactiveBg)
+        tabSettingsBtn.setTextColor(if (tabIndex == 1) activeText else inactiveText)
+
+        tabAboutBtn.setBackgroundColor(if (tabIndex == 2) activeBg else inactiveBg)
+        tabAboutBtn.setTextColor(if (tabIndex == 2) activeText else inactiveText)
+
+        // Tab containers visibility
+        connectContainer.visibility = if (tabIndex == 0) View.VISIBLE else View.GONE
+        settingsContainer.visibility = if (tabIndex == 1) View.VISIBLE else View.GONE
+        aboutContainer.visibility = if (tabIndex == 2) View.VISIBLE else View.GONE
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -158,6 +262,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
                     statsOverlay.visibility = View.VISIBLE
                     statsOverlay.text = "Stream: ${streamWidth}x${streamHeight} @ ${fps}fps"
                     connectButton.text = "Disconnect"
+                    headerPill.text = "LIVE STREAM"
+                    headerPill.setTextColor(Color.parseColor("#10B981"))
 
                     // Start hardware video decoder
                     decoder = UltraVideoDecoder(surfaceView.holder.surface, streamWidth, streamHeight)
@@ -202,6 +308,8 @@ class MainActivity : Activity(), SurfaceHolder.Callback {
         isConnected = false
         overlayLayout.visibility = View.VISIBLE
         statsOverlay.visibility = View.GONE
+        headerPill.text = "STANDBY"
+        headerPill.setTextColor(Color.parseColor("#38BDF8"))
         statusText.text = reason
         connectButton.text = "Connect"
         decoder?.stop()

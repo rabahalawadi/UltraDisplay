@@ -20,6 +20,7 @@ class UltraSPenManager(
     private var wasTouching = false
     private var wasHovering = false
     private var eventCount = 0
+    var showCursor: Boolean = true
 
     companion object {
         const val PKT_INPUT_SPEN: Byte = 0x10
@@ -259,7 +260,7 @@ class UltraSPenManager(
             """.trimIndent()
 
             cursorIndicator?.let { indicator ->
-                indicator.visibility = View.VISIBLE
+                indicator.visibility = if (showCursor) View.VISIBLE else View.GONE
                 indicator.x = event.x - (indicator.width / 2f)
                 indicator.y = event.y - (indicator.height / 2f)
             }
